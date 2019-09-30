@@ -2,6 +2,8 @@
 
 Unifinished GameBoy (DMG) emulator
 
+![gbemu screen](/screen.png)
+
 ## Docs
 
 - https://ia801906.us.archive.org/19/items/GameBoyProgManVer1.1/GameBoyProgManVer1.1.pdf

@@ -2,19 +2,20 @@ package renderer
 
 import (
 	"fmt"
+	"image"
+	"runtime"
+	"time"
+
 	"github.com/adnsio/gbemu/pkg/gameboy"
 	"github.com/adnsio/gbemu/pkg/gameboy/bits"
 	"github.com/adnsio/gbemu/pkg/gameboy/hardware/display"
 	"github.com/veandco/go-sdl2/sdl"
-	"image"
-	"runtime"
-	"time"
 )
 
 const (
 	//MainWindowWidth        = 160
 	//MainWindowHeight       = 144
-	MainWindowScale = 2
+	MainWindowScale = 1
 	//TilesWindowWidth       = 8 * 16
 	//TilesWindowHeight      = 8 * 16
 	//TilesWindowScale       = 1
