@@ -6,43 +6,442 @@ import (
 	"github.com/adnsio/gbemu/pkg/gameboy/cpu/register"
 )
 
-// op0x0000 executes NOP
-// returns length and cycles
-// template control/misc/nop
+var opUnprefixedMap map[uint16]func (c *CPU) (int, int) = map[uint16]func(c *CPU) (int, int){
+	0x0000: op0x0000,
+	0x0001: op0x0001,
+	0x0002: op0x0002,
+	0x0003: op0x0003,
+	0x0004: op0x0004,
+	0x0005: op0x0005,
+	0x0006: op0x0006,
+	0x0008: op0x0008,
+	0x0009: op0x0009,
+	0x000a: op0x000a,
+	0x000b: op0x000b,
+	0x000c: op0x000c,
+	0x000d: op0x000d,
+	0x000e: op0x000e,
+	0x0010: op0x0010,
+	0x0011: op0x0011,
+	0x0012: op0x0012,
+	0x0013: op0x0013,
+	0x0014: op0x0014,
+	0x0015: op0x0015,
+	0x0016: op0x0016,
+	0x0019: op0x0019,
+	0x001a: op0x001a,
+	0x001b: op0x001b,
+	0x001c: op0x001c,
+	0x001d: op0x001d,
+	0x001e: op0x001e,
+	0x0021: op0x0021,
+	0x0022: op0x0022,
+	0x0023: op0x0023,
+	0x0024: op0x0024,
+	0x0025: op0x0025,
+	0x0026: op0x0026,
+	0x0029: op0x0029,
+	0x002a: op0x002a,
+	0x002b: op0x002b,
+	0x002c: op0x002c,
+	0x002d: op0x002d,
+	0x002e: op0x002e,
+	0x002f: op0x002f,
+	0x0031: op0x0031,
+	0x0032: op0x0032,
+	0x0033: op0x0033,
+	0x0034: op0x0034,
+	0x0035: op0x0035,
+	0x0036: op0x0036,
+	0x0039: op0x0039,
+	0x003a: op0x003a,
+	0x003b: op0x003b,
+	0x003c: op0x003c,
+	0x003d: op0x003d,
+	0x003e: op0x003e,
+	0x003f: op0x003f,
+	0x0040: op0x0040,
+	0x0041: op0x0041,
+	0x0042: op0x0042,
+	0x0043: op0x0043,
+	0x0044: op0x0044,
+	0x0045: op0x0045,
+	0x0046: op0x0046,
+	0x0047: op0x0047,
+	0x0048: op0x0048,
+	0x0049: op0x0049,
+	0x004a: op0x004a,
+	0x004b: op0x004b,
+	0x004c: op0x004c,
+	0x004d: op0x004d,
+	0x004e: op0x004e,
+	0x004f: op0x004f,
+	0x0050: op0x0050,
+	0x0051: op0x0051,
+	0x0052: op0x0052,
+	0x0053: op0x0053,
+	0x0054: op0x0054,
+	0x0055: op0x0055,
+	0x0056: op0x0056,
+	0x0057: op0x0057,
+	0x0058: op0x0058,
+	0x0059: op0x0059,
+	0x005a: op0x005a,
+	0x005b: op0x005b,
+	0x005c: op0x005c,
+	0x005d: op0x005d,
+	0x005e: op0x005e,
+	0x005f: op0x005f,
+	0x0060: op0x0060,
+	0x0061: op0x0061,
+	0x0062: op0x0062,
+	0x0063: op0x0063,
+	0x0064: op0x0064,
+	0x0065: op0x0065,
+	0x0066: op0x0066,
+	0x0067: op0x0067,
+	0x0068: op0x0068,
+	0x0069: op0x0069,
+	0x006a: op0x006a,
+	0x006b: op0x006b,
+	0x006c: op0x006c,
+	0x006d: op0x006d,
+	0x006e: op0x006e,
+	0x006f: op0x006f,
+	0x0070: op0x0070,
+	0x0071: op0x0071,
+	0x0072: op0x0072,
+	0x0073: op0x0073,
+	0x0074: op0x0074,
+	0x0075: op0x0075,
+	0x0076: op0x0076,
+	0x0077: op0x0077,
+	0x0078: op0x0078,
+	0x0079: op0x0079,
+	0x007a: op0x007a,
+	0x007b: op0x007b,
+	0x007c: op0x007c,
+	0x007d: op0x007d,
+	0x007e: op0x007e,
+	0x007f: op0x007f,
+	0x0080: op0x0080,
+	0x0081: op0x0081,
+	0x0082: op0x0082,
+	0x0083: op0x0083,
+	0x0084: op0x0084,
+	0x0085: op0x0085,
+	0x0086: op0x0086,
+	0x0087: op0x0087,
+	0x0088: op0x0088,
+	0x0089: op0x0089,
+	0x008a: op0x008a,
+	0x008b: op0x008b,
+	0x008c: op0x008c,
+	0x008d: op0x008d,
+	0x008e: op0x008e,
+	0x008f: op0x008f,
+	0x0090: op0x0090,
+	0x0091: op0x0091,
+	0x0092: op0x0092,
+	0x0093: op0x0093,
+	0x0094: op0x0094,
+	0x0095: op0x0095,
+	0x0096: op0x0096,
+	0x0097: op0x0097,
+	0x0098: op0x0098,
+	0x0099: op0x0099,
+	0x009a: op0x009a,
+	0x009b: op0x009b,
+	0x009c: op0x009c,
+	0x009d: op0x009d,
+	0x009e: op0x009e,
+	0x009f: op0x009f,
+	0x00a0: op0x00a0,
+	0x00a1: op0x00a1,
+	0x00a2: op0x00a2,
+	0x00a3: op0x00a3,
+	0x00a4: op0x00a4,
+	0x00a5: op0x00a5,
+	0x00a6: op0x00a6,
+	0x00a7: op0x00a7,
+	0x00a8: op0x00a8,
+	0x00a9: op0x00a9,
+	0x00aa: op0x00aa,
+	0x00ab: op0x00ab,
+	0x00ac: op0x00ac,
+	0x00ad: op0x00ad,
+	0x00ae: op0x00ae,
+	0x00af: op0x00af,
+	0x00b0: op0x00b0,
+	0x00b1: op0x00b1,
+	0x00b2: op0x00b2,
+	0x00b3: op0x00b3,
+	0x00b4: op0x00b4,
+	0x00b5: op0x00b5,
+	0x00b6: op0x00b6,
+	0x00b7: op0x00b7,
+	0x00b8: op0x00b8,
+	0x00b9: op0x00b9,
+	0x00ba: op0x00ba,
+	0x00bb: op0x00bb,
+	0x00bc: op0x00bc,
+	0x00bd: op0x00bd,
+	0x00be: op0x00be,
+	0x00bf: op0x00bf,
+	0x00c6: op0x00c6,
+	0x00cb: op0x00cb,
+	0x00ce: op0x00ce,
+	0x00d3: op0x00d3,
+	0x00d6: op0x00d6,
+	0x00db: op0x00db,
+	0x00dd: op0x00dd,
+	0x00de: op0x00de,
+	0x00e0: op0x00e0,
+	0x00e2: op0x00e2,
+	0x00e3: op0x00e3,
+	0x00e4: op0x00e4,
+	0x00e6: op0x00e6,
+	0x00e8: op0x00e8,
+	0x00ea: op0x00ea,
+	0x00eb: op0x00eb,
+	0x00ec: op0x00ec,
+	0x00ed: op0x00ed,
+	0x00ee: op0x00ee,
+	0x00f0: op0x00f0,
+	0x00f2: op0x00f2,
+	0x00f4: op0x00f4,
+	0x00f6: op0x00f6,
+	0x00f8: op0x00f8,
+	0x00f9: op0x00f9,
+	0x00fa: op0x00fa,
+	0x00fb: op0x00fb,
+	0x00fc: op0x00fc,
+	0x00fd: op0x00fd,
+	0x00fe: op0x00fe,
+}
+
+var opPrefixedMap map[uint16]func (c *CPU) (int, int) = map[uint16]func(c *CPU) (int, int){
+	0xcb40: op0xcb40,
+	0xcb41: op0xcb41,
+	0xcb42: op0xcb42,
+	0xcb43: op0xcb43,
+	0xcb44: op0xcb44,
+	0xcb45: op0xcb45,
+	0xcb46: op0xcb46,
+	0xcb47: op0xcb47,
+	0xcb48: op0xcb48,
+	0xcb49: op0xcb49,
+	0xcb4a: op0xcb4a,
+	0xcb4b: op0xcb4b,
+	0xcb4c: op0xcb4c,
+	0xcb4d: op0xcb4d,
+	0xcb4e: op0xcb4e,
+	0xcb4f: op0xcb4f,
+	0xcb50: op0xcb50,
+	0xcb51: op0xcb51,
+	0xcb52: op0xcb52,
+	0xcb53: op0xcb53,
+	0xcb54: op0xcb54,
+	0xcb55: op0xcb55,
+	0xcb56: op0xcb56,
+	0xcb57: op0xcb57,
+	0xcb58: op0xcb58,
+	0xcb59: op0xcb59,
+	0xcb5a: op0xcb5a,
+	0xcb5b: op0xcb5b,
+	0xcb5c: op0xcb5c,
+	0xcb5d: op0xcb5d,
+	0xcb5e: op0xcb5e,
+	0xcb5f: op0xcb5f,
+	0xcb60: op0xcb60,
+	0xcb61: op0xcb61,
+	0xcb62: op0xcb62,
+	0xcb63: op0xcb63,
+	0xcb64: op0xcb64,
+	0xcb65: op0xcb65,
+	0xcb66: op0xcb66,
+	0xcb67: op0xcb67,
+	0xcb68: op0xcb68,
+	0xcb69: op0xcb69,
+	0xcb6a: op0xcb6a,
+	0xcb6b: op0xcb6b,
+	0xcb6c: op0xcb6c,
+	0xcb6d: op0xcb6d,
+	0xcb6e: op0xcb6e,
+	0xcb6f: op0xcb6f,
+	0xcb70: op0xcb70,
+	0xcb71: op0xcb71,
+	0xcb72: op0xcb72,
+	0xcb73: op0xcb73,
+	0xcb74: op0xcb74,
+	0xcb75: op0xcb75,
+	0xcb76: op0xcb76,
+	0xcb77: op0xcb77,
+	0xcb78: op0xcb78,
+	0xcb79: op0xcb79,
+	0xcb7a: op0xcb7a,
+	0xcb7b: op0xcb7b,
+	0xcb7c: op0xcb7c,
+	0xcb7d: op0xcb7d,
+	0xcb7e: op0xcb7e,
+	0xcb7f: op0xcb7f,
+	0xcb80: op0xcb80,
+	0xcb81: op0xcb81,
+	0xcb82: op0xcb82,
+	0xcb83: op0xcb83,
+	0xcb84: op0xcb84,
+	0xcb85: op0xcb85,
+	0xcb86: op0xcb86,
+	0xcb87: op0xcb87,
+	0xcb88: op0xcb88,
+	0xcb89: op0xcb89,
+	0xcb8a: op0xcb8a,
+	0xcb8b: op0xcb8b,
+	0xcb8c: op0xcb8c,
+	0xcb8d: op0xcb8d,
+	0xcb8e: op0xcb8e,
+	0xcb8f: op0xcb8f,
+	0xcb90: op0xcb90,
+	0xcb91: op0xcb91,
+	0xcb92: op0xcb92,
+	0xcb93: op0xcb93,
+	0xcb94: op0xcb94,
+	0xcb95: op0xcb95,
+	0xcb96: op0xcb96,
+	0xcb97: op0xcb97,
+	0xcb98: op0xcb98,
+	0xcb99: op0xcb99,
+	0xcb9a: op0xcb9a,
+	0xcb9b: op0xcb9b,
+	0xcb9c: op0xcb9c,
+	0xcb9d: op0xcb9d,
+	0xcb9e: op0xcb9e,
+	0xcb9f: op0xcb9f,
+	0xcba0: op0xcba0,
+	0xcba1: op0xcba1,
+	0xcba2: op0xcba2,
+	0xcba3: op0xcba3,
+	0xcba4: op0xcba4,
+	0xcba5: op0xcba5,
+	0xcba6: op0xcba6,
+	0xcba7: op0xcba7,
+	0xcba8: op0xcba8,
+	0xcba9: op0xcba9,
+	0xcbaa: op0xcbaa,
+	0xcbab: op0xcbab,
+	0xcbac: op0xcbac,
+	0xcbad: op0xcbad,
+	0xcbae: op0xcbae,
+	0xcbaf: op0xcbaf,
+	0xcbb0: op0xcbb0,
+	0xcbb1: op0xcbb1,
+	0xcbb2: op0xcbb2,
+	0xcbb3: op0xcbb3,
+	0xcbb4: op0xcbb4,
+	0xcbb5: op0xcbb5,
+	0xcbb6: op0xcbb6,
+	0xcbb7: op0xcbb7,
+	0xcbb8: op0xcbb8,
+	0xcbb9: op0xcbb9,
+	0xcbba: op0xcbba,
+	0xcbbb: op0xcbbb,
+	0xcbbc: op0xcbbc,
+	0xcbbd: op0xcbbd,
+	0xcbbe: op0xcbbe,
+	0xcbbf: op0xcbbf,
+	0xcbc0: op0xcbc0,
+	0xcbc1: op0xcbc1,
+	0xcbc2: op0xcbc2,
+	0xcbc3: op0xcbc3,
+	0xcbc4: op0xcbc4,
+	0xcbc5: op0xcbc5,
+	0xcbc6: op0xcbc6,
+	0xcbc7: op0xcbc7,
+	0xcbc8: op0xcbc8,
+	0xcbc9: op0xcbc9,
+	0xcbca: op0xcbca,
+	0xcbcb: op0xcbcb,
+	0xcbcc: op0xcbcc,
+	0xcbcd: op0xcbcd,
+	0xcbce: op0xcbce,
+	0xcbcf: op0xcbcf,
+	0xcbd0: op0xcbd0,
+	0xcbd1: op0xcbd1,
+	0xcbd2: op0xcbd2,
+	0xcbd3: op0xcbd3,
+	0xcbd4: op0xcbd4,
+	0xcbd5: op0xcbd5,
+	0xcbd6: op0xcbd6,
+	0xcbd7: op0xcbd7,
+	0xcbd8: op0xcbd8,
+	0xcbd9: op0xcbd9,
+	0xcbda: op0xcbda,
+	0xcbdb: op0xcbdb,
+	0xcbdc: op0xcbdc,
+	0xcbdd: op0xcbdd,
+	0xcbde: op0xcbde,
+	0xcbdf: op0xcbdf,
+	0xcbe0: op0xcbe0,
+	0xcbe1: op0xcbe1,
+	0xcbe2: op0xcbe2,
+	0xcbe3: op0xcbe3,
+	0xcbe4: op0xcbe4,
+	0xcbe5: op0xcbe5,
+	0xcbe6: op0xcbe6,
+	0xcbe7: op0xcbe7,
+	0xcbe8: op0xcbe8,
+	0xcbe9: op0xcbe9,
+	0xcbea: op0xcbea,
+	0xcbeb: op0xcbeb,
+	0xcbec: op0xcbec,
+	0xcbed: op0xcbed,
+	0xcbee: op0xcbee,
+	0xcbef: op0xcbef,
+	0xcbf0: op0xcbf0,
+	0xcbf1: op0xcbf1,
+	0xcbf2: op0xcbf2,
+	0xcbf3: op0xcbf3,
+	0xcbf4: op0xcbf4,
+	0xcbf5: op0xcbf5,
+	0xcbf6: op0xcbf6,
+	0xcbf7: op0xcbf7,
+	0xcbf8: op0xcbf8,
+	0xcbf9: op0xcbf9,
+	0xcbfa: op0xcbfa,
+	0xcbfb: op0xcbfb,
+	0xcbfc: op0xcbfc,
+	0xcbfd: op0xcbfd,
+	0xcbfe: op0xcbfe,
+	0xcbff: op0xcbff,
+}
+
+// op0x0000 executes NOP (template control/misc/nop)
 func op0x0000(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0001 executes LD BC,u16
-// returns length and cycles
-// template x16/lsm/ld
+// op0x0001 executes LD BC,u16 (template x16/lsm/ld)
 func op0x0001(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.BC, c.Fetch16Bit())
 
 	return 3, 12
 }
 
-// op0x0002 executes LD (BC),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0002 executes LD (BC),A (template x8/lsm/ld)
 func op0x0002(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.BC), c.GetRegister8Bit(register.A))
 
 	return 1, 8
 }
 
-// op0x0003 executes INC BC
-// returns length and cycles
-// template x16/alu/inc
+// op0x0003 executes INC BC (template x16/alu/inc)
 func op0x0003(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.BC, c.GetRegister16Bit(register.BC) + 1)
 
 	return 1, 8
 }
 
-// op0x0004 executes INC B
-// returns length and cycles
-// template x8/alu/inc
+// op0x0004 executes INC B (template x8/alu/inc)
 func op0x0004(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.B)
 	value := destValue + 1
@@ -57,9 +456,7 @@ func op0x0004(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0005 executes DEC B
-// returns length and cycles
-// template x8/alu/dec
+// op0x0005 executes DEC B (template x8/alu/dec)
 func op0x0005(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.B)
 	value := destValue - 1
@@ -74,27 +471,21 @@ func op0x0005(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0006 executes LD B,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0006 executes LD B,u8 (template x8/lsm/ld)
 func op0x0006(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x0008 executes LD (u16),SP
-// returns length and cycles
-// template x16/lsm/ld
+// op0x0008 executes LD (u16),SP (template x16/lsm/ld)
 func op0x0008(c *CPU) (int, int) {
 	// TODO: set for (u16)
 
 	return 3, 20
 }
 
-// op0x0009 executes ADD HL,BC
-// returns length and cycles
-// template x16/alu/add
+// op0x0009 executes ADD HL,BC (template x16/alu/add)
 func op0x0009(c *CPU) (int, int) {
 	destValue := c.GetRegister16Bit(register.HL)
 	sourceValue := c.GetRegister16Bit(register.BC)
@@ -110,27 +501,21 @@ func op0x0009(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x000a executes LD A,(BC)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x000a executes LD A,(BC) (template x8/lsm/ld)
 func op0x000a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.GetRegister16Bit(register.BC)))
 
 	return 1, 8
 }
 
-// op0x000b executes DEC BC
-// returns length and cycles
-// template x16/alu/dec
+// op0x000b executes DEC BC (template x16/alu/dec)
 func op0x000b(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.BC, c.GetRegister16Bit(register.BC) - 1)
 
 	return 1, 8
 }
 
-// op0x000c executes INC C
-// returns length and cycles
-// template x8/alu/inc
+// op0x000c executes INC C (template x8/alu/inc)
 func op0x000c(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.C)
 	value := destValue + 1
@@ -145,9 +530,7 @@ func op0x000c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x000d executes DEC C
-// returns length and cycles
-// template x8/alu/dec
+// op0x000d executes DEC C (template x8/alu/dec)
 func op0x000d(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.C)
 	value := destValue - 1
@@ -162,54 +545,43 @@ func op0x000d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x000e executes LD C,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x000e executes LD C,u8 (template x8/lsm/ld)
 func op0x000e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x0010 executes STOP
-// returns length and cycles
-// template control/misc/stop
+// op0x0010 executes STOP (template control/misc/stop)
 func op0x0010(c *CPU) (int, int) {
-	// TODO: wtf
+	// TODO
+	// c.ime = 0
 
-	return 2, 4
+	return 1, 4
 }
 
-// op0x0011 executes LD DE,u16
-// returns length and cycles
-// template x16/lsm/ld
+// op0x0011 executes LD DE,u16 (template x16/lsm/ld)
 func op0x0011(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.DE, c.Fetch16Bit())
 
 	return 3, 12
 }
 
-// op0x0012 executes LD (DE),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0012 executes LD (DE),A (template x8/lsm/ld)
 func op0x0012(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.DE), c.GetRegister8Bit(register.A))
 
 	return 1, 8
 }
 
-// op0x0013 executes INC DE
-// returns length and cycles
-// template x16/alu/inc
+// op0x0013 executes INC DE (template x16/alu/inc)
 func op0x0013(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.DE, c.GetRegister16Bit(register.DE) + 1)
 
 	return 1, 8
 }
 
-// op0x0014 executes INC D
-// returns length and cycles
-// template x8/alu/inc
+// op0x0014 executes INC D (template x8/alu/inc)
 func op0x0014(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.D)
 	value := destValue + 1
@@ -224,9 +596,7 @@ func op0x0014(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0015 executes DEC D
-// returns length and cycles
-// template x8/alu/dec
+// op0x0015 executes DEC D (template x8/alu/dec)
 func op0x0015(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.D)
 	value := destValue - 1
@@ -241,18 +611,14 @@ func op0x0015(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0016 executes LD D,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0016 executes LD D,u8 (template x8/lsm/ld)
 func op0x0016(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x0019 executes ADD HL,DE
-// returns length and cycles
-// template x16/alu/add
+// op0x0019 executes ADD HL,DE (template x16/alu/add)
 func op0x0019(c *CPU) (int, int) {
 	destValue := c.GetRegister16Bit(register.HL)
 	sourceValue := c.GetRegister16Bit(register.DE)
@@ -268,27 +634,21 @@ func op0x0019(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x001a executes LD A,(DE)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x001a executes LD A,(DE) (template x8/lsm/ld)
 func op0x001a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.GetRegister16Bit(register.DE)))
 
 	return 1, 8
 }
 
-// op0x001b executes DEC DE
-// returns length and cycles
-// template x16/alu/dec
+// op0x001b executes DEC DE (template x16/alu/dec)
 func op0x001b(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.DE, c.GetRegister16Bit(register.DE) - 1)
 
 	return 1, 8
 }
 
-// op0x001c executes INC E
-// returns length and cycles
-// template x8/alu/inc
+// op0x001c executes INC E (template x8/alu/inc)
 func op0x001c(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.E)
 	value := destValue + 1
@@ -303,9 +663,7 @@ func op0x001c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x001d executes DEC E
-// returns length and cycles
-// template x8/alu/dec
+// op0x001d executes DEC E (template x8/alu/dec)
 func op0x001d(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.E)
 	value := destValue - 1
@@ -320,27 +678,21 @@ func op0x001d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x001e executes LD E,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x001e executes LD E,u8 (template x8/lsm/ld)
 func op0x001e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x0021 executes LD HL,u16
-// returns length and cycles
-// template x16/lsm/ld
+// op0x0021 executes LD HL,u16 (template x16/lsm/ld)
 func op0x0021(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.HL, c.Fetch16Bit())
 
 	return 3, 12
 }
 
-// op0x0022 executes LD (HL+),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0022 executes LD (HL+),A (template x8/lsm/ld)
 func op0x0022(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.A))
 	// TODO: set for HL
@@ -348,18 +700,14 @@ func op0x0022(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x0023 executes INC HL
-// returns length and cycles
-// template x16/alu/inc
+// op0x0023 executes INC HL (template x16/alu/inc)
 func op0x0023(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.HL, c.GetRegister16Bit(register.HL) + 1)
 
 	return 1, 8
 }
 
-// op0x0024 executes INC H
-// returns length and cycles
-// template x8/alu/inc
+// op0x0024 executes INC H (template x8/alu/inc)
 func op0x0024(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.H)
 	value := destValue + 1
@@ -374,9 +722,7 @@ func op0x0024(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0025 executes DEC H
-// returns length and cycles
-// template x8/alu/dec
+// op0x0025 executes DEC H (template x8/alu/dec)
 func op0x0025(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.H)
 	value := destValue - 1
@@ -391,18 +737,14 @@ func op0x0025(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0026 executes LD H,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0026 executes LD H,u8 (template x8/lsm/ld)
 func op0x0026(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x0029 executes ADD HL,HL
-// returns length and cycles
-// template x16/alu/add
+// op0x0029 executes ADD HL,HL (template x16/alu/add)
 func op0x0029(c *CPU) (int, int) {
 	destValue := c.GetRegister16Bit(register.HL)
 	sourceValue := c.GetRegister16Bit(register.HL)
@@ -418,9 +760,7 @@ func op0x0029(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x002a executes LD A,(HL+)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x002a executes LD A,(HL+) (template x8/lsm/ld)
 func op0x002a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 	// TODO: set for HL
@@ -428,18 +768,14 @@ func op0x002a(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x002b executes DEC HL
-// returns length and cycles
-// template x16/alu/dec
+// op0x002b executes DEC HL (template x16/alu/dec)
 func op0x002b(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.HL, c.GetRegister16Bit(register.HL) - 1)
 
 	return 1, 8
 }
 
-// op0x002c executes INC L
-// returns length and cycles
-// template x8/alu/inc
+// op0x002c executes INC L (template x8/alu/inc)
 func op0x002c(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.L)
 	value := destValue + 1
@@ -454,9 +790,7 @@ func op0x002c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x002d executes DEC L
-// returns length and cycles
-// template x8/alu/dec
+// op0x002d executes DEC L (template x8/alu/dec)
 func op0x002d(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.L)
 	value := destValue - 1
@@ -471,18 +805,14 @@ func op0x002d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x002e executes LD L,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x002e executes LD L,u8 (template x8/lsm/ld)
 func op0x002e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x002f executes CPL
-// returns length and cycles
-// template x8/alu/cpl
+// op0x002f executes CPL (template x8/alu/cpl)
 func op0x002f(c *CPU) (int, int) {
 	value := ^c.GetRegister8Bit(register.A)
 
@@ -494,18 +824,14 @@ func op0x002f(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0031 executes LD SP,u16
-// returns length and cycles
-// template x16/lsm/ld
+// op0x0031 executes LD SP,u16 (template x16/lsm/ld)
 func op0x0031(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.SP, c.Fetch16Bit())
 
 	return 3, 12
 }
 
-// op0x0032 executes LD (HL-),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0032 executes LD (HL-),A (template x8/lsm/ld)
 func op0x0032(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.A))
 	// TODO: set for HL
@@ -513,18 +839,14 @@ func op0x0032(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x0033 executes INC SP
-// returns length and cycles
-// template x16/alu/inc
+// op0x0033 executes INC SP (template x16/alu/inc)
 func op0x0033(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.SP, c.GetRegister16Bit(register.SP) + 1)
 
 	return 1, 8
 }
 
-// op0x0034 executes INC (HL)
-// returns length and cycles
-// template x8/alu/inc
+// op0x0034 executes INC (HL) (template x8/alu/inc)
 func op0x0034(c *CPU) (int, int) {
 	destValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := destValue + 1
@@ -539,9 +861,7 @@ func op0x0034(c *CPU) (int, int) {
 	return 1, 12
 }
 
-// op0x0035 executes DEC (HL)
-// returns length and cycles
-// template x8/alu/dec
+// op0x0035 executes DEC (HL) (template x8/alu/dec)
 func op0x0035(c *CPU) (int, int) {
 	destValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := destValue - 1
@@ -556,18 +876,14 @@ func op0x0035(c *CPU) (int, int) {
 	return 1, 12
 }
 
-// op0x0036 executes LD (HL),u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0036 executes LD (HL),u8 (template x8/lsm/ld)
 func op0x0036(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.Fetch8Bit())
 
 	return 2, 12
 }
 
-// op0x0039 executes ADD HL,SP
-// returns length and cycles
-// template x16/alu/add
+// op0x0039 executes ADD HL,SP (template x16/alu/add)
 func op0x0039(c *CPU) (int, int) {
 	destValue := c.GetRegister16Bit(register.HL)
 	sourceValue := c.GetRegister16Bit(register.SP)
@@ -583,9 +899,7 @@ func op0x0039(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x003a executes LD A,(HL-)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x003a executes LD A,(HL-) (template x8/lsm/ld)
 func op0x003a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 	// TODO: set for HL
@@ -593,18 +907,14 @@ func op0x003a(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x003b executes DEC SP
-// returns length and cycles
-// template x16/alu/dec
+// op0x003b executes DEC SP (template x16/alu/dec)
 func op0x003b(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.SP, c.GetRegister16Bit(register.SP) - 1)
 
 	return 1, 8
 }
 
-// op0x003c executes INC A
-// returns length and cycles
-// template x8/alu/inc
+// op0x003c executes INC A (template x8/alu/inc)
 func op0x003c(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	value := destValue + 1
@@ -619,9 +929,7 @@ func op0x003c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x003d executes DEC A
-// returns length and cycles
-// template x8/alu/dec
+// op0x003d executes DEC A (template x8/alu/dec)
 func op0x003d(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	value := destValue - 1
@@ -636,18 +944,14 @@ func op0x003d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x003e executes LD A,u8
-// returns length and cycles
-// template x8/lsm/ld
+// op0x003e executes LD A,u8 (template x8/lsm/ld)
 func op0x003e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.Fetch8Bit())
 
 	return 2, 8
 }
 
-// op0x003f executes CCF
-// returns length and cycles
-// template x8/alu/ccf
+// op0x003f executes CCF (template x8/alu/ccf)
 func op0x003f(c *CPU) (int, int) {
 	c.SetFlagN()
 	c.SetFlagH()
@@ -660,585 +964,456 @@ func op0x003f(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0040 executes LD B,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0040 executes LD B,B (template x8/lsm/ld)
 func op0x0040(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0041 executes LD B,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0041 executes LD B,C (template x8/lsm/ld)
 func op0x0041(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x0042 executes LD B,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0042 executes LD B,D (template x8/lsm/ld)
 func op0x0042(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x0043 executes LD B,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0043 executes LD B,E (template x8/lsm/ld)
 func op0x0043(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x0044 executes LD B,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0044 executes LD B,H (template x8/lsm/ld)
 func op0x0044(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x0045 executes LD B,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0045 executes LD B,L (template x8/lsm/ld)
 func op0x0045(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x0046 executes LD B,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0046 executes LD B,(HL) (template x8/lsm/ld)
 func op0x0046(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x0047 executes LD B,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0047 executes LD B,A (template x8/lsm/ld)
 func op0x0047(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.B, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0048 executes LD C,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0048 executes LD C,B (template x8/lsm/ld)
 func op0x0048(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0049 executes LD C,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0049 executes LD C,C (template x8/lsm/ld)
 func op0x0049(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x004a executes LD C,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004a executes LD C,D (template x8/lsm/ld)
 func op0x004a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x004b executes LD C,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004b executes LD C,E (template x8/lsm/ld)
 func op0x004b(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x004c executes LD C,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004c executes LD C,H (template x8/lsm/ld)
 func op0x004c(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x004d executes LD C,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004d executes LD C,L (template x8/lsm/ld)
 func op0x004d(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x004e executes LD C,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004e executes LD C,(HL) (template x8/lsm/ld)
 func op0x004e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x004f executes LD C,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x004f executes LD C,A (template x8/lsm/ld)
 func op0x004f(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.C, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0050 executes LD D,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0050 executes LD D,B (template x8/lsm/ld)
 func op0x0050(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0051 executes LD D,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0051 executes LD D,C (template x8/lsm/ld)
 func op0x0051(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x0052 executes LD D,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0052 executes LD D,D (template x8/lsm/ld)
 func op0x0052(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x0053 executes LD D,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0053 executes LD D,E (template x8/lsm/ld)
 func op0x0053(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x0054 executes LD D,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0054 executes LD D,H (template x8/lsm/ld)
 func op0x0054(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x0055 executes LD D,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0055 executes LD D,L (template x8/lsm/ld)
 func op0x0055(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x0056 executes LD D,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0056 executes LD D,(HL) (template x8/lsm/ld)
 func op0x0056(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x0057 executes LD D,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0057 executes LD D,A (template x8/lsm/ld)
 func op0x0057(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.D, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0058 executes LD E,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0058 executes LD E,B (template x8/lsm/ld)
 func op0x0058(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0059 executes LD E,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0059 executes LD E,C (template x8/lsm/ld)
 func op0x0059(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x005a executes LD E,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005a executes LD E,D (template x8/lsm/ld)
 func op0x005a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x005b executes LD E,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005b executes LD E,E (template x8/lsm/ld)
 func op0x005b(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x005c executes LD E,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005c executes LD E,H (template x8/lsm/ld)
 func op0x005c(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x005d executes LD E,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005d executes LD E,L (template x8/lsm/ld)
 func op0x005d(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x005e executes LD E,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005e executes LD E,(HL) (template x8/lsm/ld)
 func op0x005e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x005f executes LD E,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x005f executes LD E,A (template x8/lsm/ld)
 func op0x005f(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.E, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0060 executes LD H,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0060 executes LD H,B (template x8/lsm/ld)
 func op0x0060(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0061 executes LD H,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0061 executes LD H,C (template x8/lsm/ld)
 func op0x0061(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x0062 executes LD H,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0062 executes LD H,D (template x8/lsm/ld)
 func op0x0062(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x0063 executes LD H,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0063 executes LD H,E (template x8/lsm/ld)
 func op0x0063(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x0064 executes LD H,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0064 executes LD H,H (template x8/lsm/ld)
 func op0x0064(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x0065 executes LD H,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0065 executes LD H,L (template x8/lsm/ld)
 func op0x0065(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x0066 executes LD H,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0066 executes LD H,(HL) (template x8/lsm/ld)
 func op0x0066(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x0067 executes LD H,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0067 executes LD H,A (template x8/lsm/ld)
 func op0x0067(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.H, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0068 executes LD L,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0068 executes LD L,B (template x8/lsm/ld)
 func op0x0068(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0069 executes LD L,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0069 executes LD L,C (template x8/lsm/ld)
 func op0x0069(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x006a executes LD L,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006a executes LD L,D (template x8/lsm/ld)
 func op0x006a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x006b executes LD L,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006b executes LD L,E (template x8/lsm/ld)
 func op0x006b(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x006c executes LD L,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006c executes LD L,H (template x8/lsm/ld)
 func op0x006c(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x006d executes LD L,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006d executes LD L,L (template x8/lsm/ld)
 func op0x006d(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x006e executes LD L,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006e executes LD L,(HL) (template x8/lsm/ld)
 func op0x006e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x006f executes LD L,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x006f executes LD L,A (template x8/lsm/ld)
 func op0x006f(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.L, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0070 executes LD (HL),B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0070 executes LD (HL),B (template x8/lsm/ld)
 func op0x0070(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.B))
 
 	return 1, 8
 }
 
-// op0x0071 executes LD (HL),C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0071 executes LD (HL),C (template x8/lsm/ld)
 func op0x0071(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.C))
 
 	return 1, 8
 }
 
-// op0x0072 executes LD (HL),D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0072 executes LD (HL),D (template x8/lsm/ld)
 func op0x0072(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.D))
 
 	return 1, 8
 }
 
-// op0x0073 executes LD (HL),E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0073 executes LD (HL),E (template x8/lsm/ld)
 func op0x0073(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.E))
 
 	return 1, 8
 }
 
-// op0x0074 executes LD (HL),H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0074 executes LD (HL),H (template x8/lsm/ld)
 func op0x0074(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.H))
 
 	return 1, 8
 }
 
-// op0x0075 executes LD (HL),L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0075 executes LD (HL),L (template x8/lsm/ld)
 func op0x0075(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.L))
 
 	return 1, 8
 }
 
-// op0x0076 executes HALT
-// returns length and cycles
-// template control/misc/halt
+// op0x0076 executes HALT (template control/misc/halt)
 func op0x0076(c *CPU) (int, int) {
-	// TODO: wtf
+	// TODO
+	// c.ime = 0
 
 	return 1, 4
 }
 
-// op0x0077 executes LD (HL),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0077 executes LD (HL),A (template x8/lsm/ld)
 func op0x0077(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.GetRegister16Bit(register.HL), c.GetRegister8Bit(register.A))
 
 	return 1, 8
 }
 
-// op0x0078 executes LD A,B
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0078 executes LD A,B (template x8/lsm/ld)
 func op0x0078(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.B))
 
 	return 1, 4
 }
 
-// op0x0079 executes LD A,C
-// returns length and cycles
-// template x8/lsm/ld
+// op0x0079 executes LD A,C (template x8/lsm/ld)
 func op0x0079(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.C))
 
 	return 1, 4
 }
 
-// op0x007a executes LD A,D
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007a executes LD A,D (template x8/lsm/ld)
 func op0x007a(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.D))
 
 	return 1, 4
 }
 
-// op0x007b executes LD A,E
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007b executes LD A,E (template x8/lsm/ld)
 func op0x007b(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.E))
 
 	return 1, 4
 }
 
-// op0x007c executes LD A,H
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007c executes LD A,H (template x8/lsm/ld)
 func op0x007c(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.H))
 
 	return 1, 4
 }
 
-// op0x007d executes LD A,L
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007d executes LD A,L (template x8/lsm/ld)
 func op0x007d(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.L))
 
 	return 1, 4
 }
 
-// op0x007e executes LD A,(HL)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007e executes LD A,(HL) (template x8/lsm/ld)
 func op0x007e(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.GetRegister16Bit(register.HL)))
 
 	return 1, 8
 }
 
-// op0x007f executes LD A,A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x007f executes LD A,A (template x8/lsm/ld)
 func op0x007f(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetRegister8Bit(register.A))
 
 	return 1, 4
 }
 
-// op0x0080 executes ADD A,B
-// returns length and cycles
-// template x8/alu/add
+// op0x0080 executes ADD A,B (template x8/alu/add)
 func op0x0080(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -1255,9 +1430,7 @@ func op0x0080(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0081 executes ADD A,C
-// returns length and cycles
-// template x8/alu/add
+// op0x0081 executes ADD A,C (template x8/alu/add)
 func op0x0081(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -1274,9 +1447,7 @@ func op0x0081(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0082 executes ADD A,D
-// returns length and cycles
-// template x8/alu/add
+// op0x0082 executes ADD A,D (template x8/alu/add)
 func op0x0082(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -1293,9 +1464,7 @@ func op0x0082(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0083 executes ADD A,E
-// returns length and cycles
-// template x8/alu/add
+// op0x0083 executes ADD A,E (template x8/alu/add)
 func op0x0083(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -1312,9 +1481,7 @@ func op0x0083(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0084 executes ADD A,H
-// returns length and cycles
-// template x8/alu/add
+// op0x0084 executes ADD A,H (template x8/alu/add)
 func op0x0084(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -1331,9 +1498,7 @@ func op0x0084(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0085 executes ADD A,L
-// returns length and cycles
-// template x8/alu/add
+// op0x0085 executes ADD A,L (template x8/alu/add)
 func op0x0085(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -1350,9 +1515,7 @@ func op0x0085(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0086 executes ADD A,(HL)
-// returns length and cycles
-// template x8/alu/add
+// op0x0086 executes ADD A,(HL) (template x8/alu/add)
 func op0x0086(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -1369,9 +1532,7 @@ func op0x0086(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x0087 executes ADD A,A
-// returns length and cycles
-// template x8/alu/add
+// op0x0087 executes ADD A,A (template x8/alu/add)
 func op0x0087(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -1388,9 +1549,7 @@ func op0x0087(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0088 executes ADC A,B
-// returns length and cycles
-// template x8/alu/adc
+// op0x0088 executes ADC A,B (template x8/alu/adc)
 func op0x0088(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1412,9 +1571,7 @@ func op0x0088(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0089 executes ADC A,C
-// returns length and cycles
-// template x8/alu/adc
+// op0x0089 executes ADC A,C (template x8/alu/adc)
 func op0x0089(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1436,9 +1593,7 @@ func op0x0089(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x008a executes ADC A,D
-// returns length and cycles
-// template x8/alu/adc
+// op0x008a executes ADC A,D (template x8/alu/adc)
 func op0x008a(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1460,9 +1615,7 @@ func op0x008a(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x008b executes ADC A,E
-// returns length and cycles
-// template x8/alu/adc
+// op0x008b executes ADC A,E (template x8/alu/adc)
 func op0x008b(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1484,9 +1637,7 @@ func op0x008b(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x008c executes ADC A,H
-// returns length and cycles
-// template x8/alu/adc
+// op0x008c executes ADC A,H (template x8/alu/adc)
 func op0x008c(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1508,9 +1659,7 @@ func op0x008c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x008d executes ADC A,L
-// returns length and cycles
-// template x8/alu/adc
+// op0x008d executes ADC A,L (template x8/alu/adc)
 func op0x008d(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1532,9 +1681,7 @@ func op0x008d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x008e executes ADC A,(HL)
-// returns length and cycles
-// template x8/alu/adc
+// op0x008e executes ADC A,(HL) (template x8/alu/adc)
 func op0x008e(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1556,9 +1703,7 @@ func op0x008e(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x008f executes ADC A,A
-// returns length and cycles
-// template x8/alu/adc
+// op0x008f executes ADC A,A (template x8/alu/adc)
 func op0x008f(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1580,9 +1725,7 @@ func op0x008f(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0090 executes SUB A,B
-// returns length and cycles
-// template x8/alu/sub
+// op0x0090 executes SUB A,B (template x8/alu/sub)
 func op0x0090(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -1599,9 +1742,7 @@ func op0x0090(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0091 executes SUB A,C
-// returns length and cycles
-// template x8/alu/sub
+// op0x0091 executes SUB A,C (template x8/alu/sub)
 func op0x0091(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -1618,9 +1759,7 @@ func op0x0091(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0092 executes SUB A,D
-// returns length and cycles
-// template x8/alu/sub
+// op0x0092 executes SUB A,D (template x8/alu/sub)
 func op0x0092(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -1637,9 +1776,7 @@ func op0x0092(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0093 executes SUB A,E
-// returns length and cycles
-// template x8/alu/sub
+// op0x0093 executes SUB A,E (template x8/alu/sub)
 func op0x0093(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -1656,9 +1793,7 @@ func op0x0093(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0094 executes SUB A,H
-// returns length and cycles
-// template x8/alu/sub
+// op0x0094 executes SUB A,H (template x8/alu/sub)
 func op0x0094(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -1675,9 +1810,7 @@ func op0x0094(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0095 executes SUB A,L
-// returns length and cycles
-// template x8/alu/sub
+// op0x0095 executes SUB A,L (template x8/alu/sub)
 func op0x0095(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -1694,9 +1827,7 @@ func op0x0095(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0096 executes SUB A,(HL)
-// returns length and cycles
-// template x8/alu/sub
+// op0x0096 executes SUB A,(HL) (template x8/alu/sub)
 func op0x0096(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -1713,9 +1844,7 @@ func op0x0096(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x0097 executes SUB A,A
-// returns length and cycles
-// template x8/alu/sub
+// op0x0097 executes SUB A,A (template x8/alu/sub)
 func op0x0097(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -1732,9 +1861,7 @@ func op0x0097(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0098 executes SBC A,B
-// returns length and cycles
-// template x8/alu/sbc
+// op0x0098 executes SBC A,B (template x8/alu/sbc)
 func op0x0098(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1756,9 +1883,7 @@ func op0x0098(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x0099 executes SBC A,C
-// returns length and cycles
-// template x8/alu/sbc
+// op0x0099 executes SBC A,C (template x8/alu/sbc)
 func op0x0099(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1780,9 +1905,7 @@ func op0x0099(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x009a executes SBC A,D
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009a executes SBC A,D (template x8/alu/sbc)
 func op0x009a(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1804,9 +1927,7 @@ func op0x009a(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x009b executes SBC A,E
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009b executes SBC A,E (template x8/alu/sbc)
 func op0x009b(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1828,9 +1949,7 @@ func op0x009b(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x009c executes SBC A,H
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009c executes SBC A,H (template x8/alu/sbc)
 func op0x009c(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1852,9 +1971,7 @@ func op0x009c(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x009d executes SBC A,L
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009d executes SBC A,L (template x8/alu/sbc)
 func op0x009d(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1876,9 +1993,7 @@ func op0x009d(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x009e executes SBC A,(HL)
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009e executes SBC A,(HL) (template x8/alu/sbc)
 func op0x009e(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1900,9 +2015,7 @@ func op0x009e(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x009f executes SBC A,A
-// returns length and cycles
-// template x8/alu/sbc
+// op0x009f executes SBC A,A (template x8/alu/sbc)
 func op0x009f(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -1924,9 +2037,7 @@ func op0x009f(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a0 executes AND A,B
-// returns length and cycles
-// template x8/alu/and
+// op0x00a0 executes AND A,B (template x8/alu/and)
 func op0x00a0(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -1942,9 +2053,7 @@ func op0x00a0(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a1 executes AND A,C
-// returns length and cycles
-// template x8/alu/and
+// op0x00a1 executes AND A,C (template x8/alu/and)
 func op0x00a1(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -1960,9 +2069,7 @@ func op0x00a1(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a2 executes AND A,D
-// returns length and cycles
-// template x8/alu/and
+// op0x00a2 executes AND A,D (template x8/alu/and)
 func op0x00a2(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -1978,9 +2085,7 @@ func op0x00a2(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a3 executes AND A,E
-// returns length and cycles
-// template x8/alu/and
+// op0x00a3 executes AND A,E (template x8/alu/and)
 func op0x00a3(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -1996,9 +2101,7 @@ func op0x00a3(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a4 executes AND A,H
-// returns length and cycles
-// template x8/alu/and
+// op0x00a4 executes AND A,H (template x8/alu/and)
 func op0x00a4(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -2014,9 +2117,7 @@ func op0x00a4(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a5 executes AND A,L
-// returns length and cycles
-// template x8/alu/and
+// op0x00a5 executes AND A,L (template x8/alu/and)
 func op0x00a5(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -2032,9 +2133,7 @@ func op0x00a5(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a6 executes AND A,(HL)
-// returns length and cycles
-// template x8/alu/and
+// op0x00a6 executes AND A,(HL) (template x8/alu/and)
 func op0x00a6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -2050,9 +2149,7 @@ func op0x00a6(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x00a7 executes AND A,A
-// returns length and cycles
-// template x8/alu/and
+// op0x00a7 executes AND A,A (template x8/alu/and)
 func op0x00a7(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -2068,9 +2165,7 @@ func op0x00a7(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a8 executes XOR A,B
-// returns length and cycles
-// template x8/alu/xor
+// op0x00a8 executes XOR A,B (template x8/alu/xor)
 func op0x00a8(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -2086,9 +2181,7 @@ func op0x00a8(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00a9 executes XOR A,C
-// returns length and cycles
-// template x8/alu/xor
+// op0x00a9 executes XOR A,C (template x8/alu/xor)
 func op0x00a9(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -2104,9 +2197,7 @@ func op0x00a9(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00aa executes XOR A,D
-// returns length and cycles
-// template x8/alu/xor
+// op0x00aa executes XOR A,D (template x8/alu/xor)
 func op0x00aa(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -2122,9 +2213,7 @@ func op0x00aa(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00ab executes XOR A,E
-// returns length and cycles
-// template x8/alu/xor
+// op0x00ab executes XOR A,E (template x8/alu/xor)
 func op0x00ab(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -2140,9 +2229,7 @@ func op0x00ab(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00ac executes XOR A,H
-// returns length and cycles
-// template x8/alu/xor
+// op0x00ac executes XOR A,H (template x8/alu/xor)
 func op0x00ac(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -2158,9 +2245,7 @@ func op0x00ac(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00ad executes XOR A,L
-// returns length and cycles
-// template x8/alu/xor
+// op0x00ad executes XOR A,L (template x8/alu/xor)
 func op0x00ad(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -2176,9 +2261,7 @@ func op0x00ad(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00ae executes XOR A,(HL)
-// returns length and cycles
-// template x8/alu/xor
+// op0x00ae executes XOR A,(HL) (template x8/alu/xor)
 func op0x00ae(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -2194,9 +2277,7 @@ func op0x00ae(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x00af executes XOR A,A
-// returns length and cycles
-// template x8/alu/xor
+// op0x00af executes XOR A,A (template x8/alu/xor)
 func op0x00af(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -2212,9 +2293,7 @@ func op0x00af(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b0 executes OR A,B
-// returns length and cycles
-// template x8/alu/or
+// op0x00b0 executes OR A,B (template x8/alu/or)
 func op0x00b0(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -2230,9 +2309,7 @@ func op0x00b0(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b1 executes OR A,C
-// returns length and cycles
-// template x8/alu/or
+// op0x00b1 executes OR A,C (template x8/alu/or)
 func op0x00b1(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -2248,9 +2325,7 @@ func op0x00b1(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b2 executes OR A,D
-// returns length and cycles
-// template x8/alu/or
+// op0x00b2 executes OR A,D (template x8/alu/or)
 func op0x00b2(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -2266,9 +2341,7 @@ func op0x00b2(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b3 executes OR A,E
-// returns length and cycles
-// template x8/alu/or
+// op0x00b3 executes OR A,E (template x8/alu/or)
 func op0x00b3(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -2284,9 +2357,7 @@ func op0x00b3(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b4 executes OR A,H
-// returns length and cycles
-// template x8/alu/or
+// op0x00b4 executes OR A,H (template x8/alu/or)
 func op0x00b4(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -2302,9 +2373,7 @@ func op0x00b4(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b5 executes OR A,L
-// returns length and cycles
-// template x8/alu/or
+// op0x00b5 executes OR A,L (template x8/alu/or)
 func op0x00b5(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -2320,9 +2389,7 @@ func op0x00b5(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b6 executes OR A,(HL)
-// returns length and cycles
-// template x8/alu/or
+// op0x00b6 executes OR A,(HL) (template x8/alu/or)
 func op0x00b6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -2338,9 +2405,7 @@ func op0x00b6(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x00b7 executes OR A,A
-// returns length and cycles
-// template x8/alu/or
+// op0x00b7 executes OR A,A (template x8/alu/or)
 func op0x00b7(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -2356,9 +2421,7 @@ func op0x00b7(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b8 executes CP A,B
-// returns length and cycles
-// template x8/alu/cp
+// op0x00b8 executes CP A,B (template x8/alu/cp)
 func op0x00b8(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.B)
@@ -2373,9 +2436,7 @@ func op0x00b8(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00b9 executes CP A,C
-// returns length and cycles
-// template x8/alu/cp
+// op0x00b9 executes CP A,C (template x8/alu/cp)
 func op0x00b9(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.C)
@@ -2390,9 +2451,7 @@ func op0x00b9(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00ba executes CP A,D
-// returns length and cycles
-// template x8/alu/cp
+// op0x00ba executes CP A,D (template x8/alu/cp)
 func op0x00ba(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.D)
@@ -2407,9 +2466,7 @@ func op0x00ba(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00bb executes CP A,E
-// returns length and cycles
-// template x8/alu/cp
+// op0x00bb executes CP A,E (template x8/alu/cp)
 func op0x00bb(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.E)
@@ -2424,9 +2481,7 @@ func op0x00bb(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00bc executes CP A,H
-// returns length and cycles
-// template x8/alu/cp
+// op0x00bc executes CP A,H (template x8/alu/cp)
 func op0x00bc(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.H)
@@ -2441,9 +2496,7 @@ func op0x00bc(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00bd executes CP A,L
-// returns length and cycles
-// template x8/alu/cp
+// op0x00bd executes CP A,L (template x8/alu/cp)
 func op0x00bd(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.L)
@@ -2458,9 +2511,7 @@ func op0x00bd(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00be executes CP A,(HL)
-// returns length and cycles
-// template x8/alu/cp
+// op0x00be executes CP A,(HL) (template x8/alu/cp)
 func op0x00be(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
@@ -2475,9 +2526,7 @@ func op0x00be(c *CPU) (int, int) {
 	return 1, 8
 }
 
-// op0x00bf executes CP A,A
-// returns length and cycles
-// template x8/alu/cp
+// op0x00bf executes CP A,A (template x8/alu/cp)
 func op0x00bf(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.GetRegister8Bit(register.A)
@@ -2492,9 +2541,7 @@ func op0x00bf(c *CPU) (int, int) {
 	return 1, 4
 }
 
-// op0x00c6 executes ADD A,u8
-// returns length and cycles
-// template x8/alu/add
+// op0x00c6 executes ADD A,u8 (template x8/alu/add)
 func op0x00c6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2511,9 +2558,14 @@ func op0x00c6(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00ce executes ADC A,u8
-// returns length and cycles
-// template x8/alu/adc
+// op0x00cb executes PREFIX CB (template control/misc/prefix)
+func op0x00cb(c *CPU) (int, int) {
+	c.prefix = true
+
+	return 1, 4
+}
+
+// op0x00ce executes ADC A,u8 (template x8/alu/adc)
 func op0x00ce(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -2535,9 +2587,12 @@ func op0x00ce(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00d6 executes SUB A,u8
-// returns length and cycles
-// template x8/alu/sub
+// op0x00d3 executes UNUSED (template unused/unused)
+func op0x00d3(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00d6 executes SUB A,u8 (template x8/alu/sub)
 func op0x00d6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2554,9 +2609,17 @@ func op0x00d6(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00de executes SBC A,u8
-// returns length and cycles
-// template x8/alu/sbc
+// op0x00db executes UNUSED (template unused/unused)
+func op0x00db(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00dd executes UNUSED (template unused/unused)
+func op0x00dd(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00de executes SBC A,u8 (template x8/alu/sbc)
 func op0x00de(c *CPU) (int, int) {
 	carry := uint8(0)
 	if c.GetFlagC() {
@@ -2578,27 +2641,31 @@ func op0x00de(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00e0 executes LD (FF00+u8),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00e0 executes LD (FF00+u8),A (template x8/lsm/ld)
 func op0x00e0(c *CPU) (int, int) {
 	// TODO: set for (FF00+u8)
 
 	return 2, 12
 }
 
-// op0x00e2 executes LD (FF00+C),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00e2 executes LD (FF00+C),A (template x8/lsm/ld)
 func op0x00e2(c *CPU) (int, int) {
 	// TODO: set for (FF00+C)
 
 	return 1, 8
 }
 
-// op0x00e6 executes AND A,u8
-// returns length and cycles
-// template x8/alu/and
+// op0x00e3 executes UNUSED (template unused/unused)
+func op0x00e3(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00e4 executes UNUSED (template unused/unused)
+func op0x00e4(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00e6 executes AND A,u8 (template x8/alu/and)
 func op0x00e6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2614,9 +2681,7 @@ func op0x00e6(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00e8 executes ADD SP,i8
-// returns length and cycles
-// template x16/alu/add
+// op0x00e8 executes ADD SP,i8 (template x16/alu/add)
 func op0x00e8(c *CPU) (int, int) {
 	destValue := c.GetRegister16Bit(register.SP)
 	sourceValue := uint16(int8(c.Fetch8Bit()))
@@ -2633,18 +2698,29 @@ func op0x00e8(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0x00ea executes LD (u16),A
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00ea executes LD (u16),A (template x8/lsm/ld)
 func op0x00ea(c *CPU) (int, int) {
 	c.SetMemory8Bit(c.Fetch16Bit(), c.GetRegister8Bit(register.A))
 
 	return 3, 16
 }
 
-// op0x00ee executes XOR A,u8
-// returns length and cycles
-// template x8/alu/xor
+// op0x00eb executes UNUSED (template unused/unused)
+func op0x00eb(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00ec executes UNUSED (template unused/unused)
+func op0x00ec(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00ed executes UNUSED (template unused/unused)
+func op0x00ed(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00ee executes XOR A,u8 (template x8/alu/xor)
 func op0x00ee(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2660,27 +2736,26 @@ func op0x00ee(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00f0 executes LD A,(FF00+u8)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00f0 executes LD A,(FF00+u8) (template x8/lsm/ld)
 func op0x00f0(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(0xff00 + uint16(c.Fetch8Bit())))
 
 	return 2, 12
 }
 
-// op0x00f2 executes LD A,(FF00+C)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00f2 executes LD A,(FF00+C) (template x8/lsm/ld)
 func op0x00f2(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(0xff00 + uint16(c.GetRegister8Bit(register.C))))
 
 	return 1, 8
 }
 
-// op0x00f6 executes OR A,u8
-// returns length and cycles
-// template x8/alu/or
+// op0x00f4 executes UNUSED (template unused/unused)
+func op0x00f4(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00f6 executes OR A,u8 (template x8/alu/or)
 func op0x00f6(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2696,9 +2771,7 @@ func op0x00f6(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0x00f8 executes LD HL,SP+i8
-// returns length and cycles
-// template x16/alu/ld
+// op0x00f8 executes LD HL,SP+i8 (template x16/alu/ld)
 func op0x00f8(c *CPU) (int, int) {
 	sourceValue1 := c.GetRegister16Bit(register.SP)
 	sourceValue2 := uint16(int8(c.Fetch8Bit()))
@@ -2715,27 +2788,39 @@ func op0x00f8(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0x00f9 executes LD SP,HL
-// returns length and cycles
-// template x16/lsm/ld
+// op0x00f9 executes LD SP,HL (template x16/lsm/ld)
 func op0x00f9(c *CPU) (int, int) {
 	c.SetRegister16Bit(register.SP, c.GetRegister16Bit(register.HL))
 
 	return 1, 8
 }
 
-// op0x00fa executes LD A,(u16)
-// returns length and cycles
-// template x8/lsm/ld
+// op0x00fa executes LD A,(u16) (template x8/lsm/ld)
 func op0x00fa(c *CPU) (int, int) {
 	c.SetRegister8Bit(register.A, c.GetMemory8Bit(c.Fetch16Bit()))
 
 	return 3, 16
 }
 
-// op0x00fe executes CP A,u8
-// returns length and cycles
-// template x8/alu/cp
+// op0x00fb executes EI (template control/misc/ei)
+func op0x00fb(c *CPU) (int, int) {
+	// TODO
+	// c.imeScheduled = 0
+
+	return 1, 4
+}
+
+// op0x00fc executes UNUSED (template unused/unused)
+func op0x00fc(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00fd executes UNUSED (template unused/unused)
+func op0x00fd(c *CPU) (int, int) {
+	return 1, 0
+}
+
+// op0x00fe executes CP A,u8 (template x8/alu/cp)
 func op0x00fe(c *CPU) (int, int) {
 	destValue := c.GetRegister8Bit(register.A)
 	sourceValue := c.Fetch8Bit()
@@ -2750,9 +2835,7 @@ func op0x00fe(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb40 executes BIT 0,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb40 executes BIT 0,B (template x8/rsb/bit)
 func op0xcb40(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 0) % 2
@@ -2764,9 +2847,7 @@ func op0xcb40(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb41 executes BIT 0,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb41 executes BIT 0,C (template x8/rsb/bit)
 func op0xcb41(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 0) % 2
@@ -2778,9 +2859,7 @@ func op0xcb41(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb42 executes BIT 0,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb42 executes BIT 0,D (template x8/rsb/bit)
 func op0xcb42(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 0) % 2
@@ -2792,9 +2871,7 @@ func op0xcb42(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb43 executes BIT 0,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb43 executes BIT 0,E (template x8/rsb/bit)
 func op0xcb43(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 0) % 2
@@ -2806,9 +2883,7 @@ func op0xcb43(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb44 executes BIT 0,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb44 executes BIT 0,H (template x8/rsb/bit)
 func op0xcb44(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 0) % 2
@@ -2820,9 +2895,7 @@ func op0xcb44(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb45 executes BIT 0,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb45 executes BIT 0,L (template x8/rsb/bit)
 func op0xcb45(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 0) % 2
@@ -2834,9 +2907,7 @@ func op0xcb45(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb46 executes BIT 0,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb46 executes BIT 0,(HL) (template x8/rsb/bit)
 func op0xcb46(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 0) % 2
@@ -2848,9 +2919,7 @@ func op0xcb46(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb47 executes BIT 0,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb47 executes BIT 0,A (template x8/rsb/bit)
 func op0xcb47(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 0) % 2
@@ -2862,9 +2931,7 @@ func op0xcb47(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb48 executes BIT 1,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb48 executes BIT 1,B (template x8/rsb/bit)
 func op0xcb48(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 1) % 2
@@ -2876,9 +2943,7 @@ func op0xcb48(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb49 executes BIT 1,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb49 executes BIT 1,C (template x8/rsb/bit)
 func op0xcb49(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 1) % 2
@@ -2890,9 +2955,7 @@ func op0xcb49(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb4a executes BIT 1,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4a executes BIT 1,D (template x8/rsb/bit)
 func op0xcb4a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 1) % 2
@@ -2904,9 +2967,7 @@ func op0xcb4a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb4b executes BIT 1,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4b executes BIT 1,E (template x8/rsb/bit)
 func op0xcb4b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 1) % 2
@@ -2918,9 +2979,7 @@ func op0xcb4b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb4c executes BIT 1,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4c executes BIT 1,H (template x8/rsb/bit)
 func op0xcb4c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 1) % 2
@@ -2932,9 +2991,7 @@ func op0xcb4c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb4d executes BIT 1,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4d executes BIT 1,L (template x8/rsb/bit)
 func op0xcb4d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 1) % 2
@@ -2946,9 +3003,7 @@ func op0xcb4d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb4e executes BIT 1,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4e executes BIT 1,(HL) (template x8/rsb/bit)
 func op0xcb4e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 1) % 2
@@ -2960,9 +3015,7 @@ func op0xcb4e(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb4f executes BIT 1,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb4f executes BIT 1,A (template x8/rsb/bit)
 func op0xcb4f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 1) % 2
@@ -2974,9 +3027,7 @@ func op0xcb4f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb50 executes BIT 2,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb50 executes BIT 2,B (template x8/rsb/bit)
 func op0xcb50(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 2) % 2
@@ -2988,9 +3039,7 @@ func op0xcb50(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb51 executes BIT 2,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb51 executes BIT 2,C (template x8/rsb/bit)
 func op0xcb51(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 2) % 2
@@ -3002,9 +3051,7 @@ func op0xcb51(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb52 executes BIT 2,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb52 executes BIT 2,D (template x8/rsb/bit)
 func op0xcb52(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 2) % 2
@@ -3016,9 +3063,7 @@ func op0xcb52(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb53 executes BIT 2,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb53 executes BIT 2,E (template x8/rsb/bit)
 func op0xcb53(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 2) % 2
@@ -3030,9 +3075,7 @@ func op0xcb53(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb54 executes BIT 2,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb54 executes BIT 2,H (template x8/rsb/bit)
 func op0xcb54(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 2) % 2
@@ -3044,9 +3087,7 @@ func op0xcb54(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb55 executes BIT 2,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb55 executes BIT 2,L (template x8/rsb/bit)
 func op0xcb55(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 2) % 2
@@ -3058,9 +3099,7 @@ func op0xcb55(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb56 executes BIT 2,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb56 executes BIT 2,(HL) (template x8/rsb/bit)
 func op0xcb56(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 2) % 2
@@ -3072,9 +3111,7 @@ func op0xcb56(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb57 executes BIT 2,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb57 executes BIT 2,A (template x8/rsb/bit)
 func op0xcb57(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 2) % 2
@@ -3086,9 +3123,7 @@ func op0xcb57(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb58 executes BIT 3,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb58 executes BIT 3,B (template x8/rsb/bit)
 func op0xcb58(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 3) % 2
@@ -3100,9 +3135,7 @@ func op0xcb58(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb59 executes BIT 3,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb59 executes BIT 3,C (template x8/rsb/bit)
 func op0xcb59(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 3) % 2
@@ -3114,9 +3147,7 @@ func op0xcb59(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb5a executes BIT 3,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5a executes BIT 3,D (template x8/rsb/bit)
 func op0xcb5a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 3) % 2
@@ -3128,9 +3159,7 @@ func op0xcb5a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb5b executes BIT 3,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5b executes BIT 3,E (template x8/rsb/bit)
 func op0xcb5b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 3) % 2
@@ -3142,9 +3171,7 @@ func op0xcb5b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb5c executes BIT 3,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5c executes BIT 3,H (template x8/rsb/bit)
 func op0xcb5c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 3) % 2
@@ -3156,9 +3183,7 @@ func op0xcb5c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb5d executes BIT 3,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5d executes BIT 3,L (template x8/rsb/bit)
 func op0xcb5d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 3) % 2
@@ -3170,9 +3195,7 @@ func op0xcb5d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb5e executes BIT 3,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5e executes BIT 3,(HL) (template x8/rsb/bit)
 func op0xcb5e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 3) % 2
@@ -3184,9 +3207,7 @@ func op0xcb5e(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb5f executes BIT 3,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb5f executes BIT 3,A (template x8/rsb/bit)
 func op0xcb5f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 3) % 2
@@ -3198,9 +3219,7 @@ func op0xcb5f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb60 executes BIT 4,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb60 executes BIT 4,B (template x8/rsb/bit)
 func op0xcb60(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 4) % 2
@@ -3212,9 +3231,7 @@ func op0xcb60(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb61 executes BIT 4,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb61 executes BIT 4,C (template x8/rsb/bit)
 func op0xcb61(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 4) % 2
@@ -3226,9 +3243,7 @@ func op0xcb61(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb62 executes BIT 4,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb62 executes BIT 4,D (template x8/rsb/bit)
 func op0xcb62(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 4) % 2
@@ -3240,9 +3255,7 @@ func op0xcb62(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb63 executes BIT 4,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb63 executes BIT 4,E (template x8/rsb/bit)
 func op0xcb63(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 4) % 2
@@ -3254,9 +3267,7 @@ func op0xcb63(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb64 executes BIT 4,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb64 executes BIT 4,H (template x8/rsb/bit)
 func op0xcb64(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 4) % 2
@@ -3268,9 +3279,7 @@ func op0xcb64(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb65 executes BIT 4,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb65 executes BIT 4,L (template x8/rsb/bit)
 func op0xcb65(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 4) % 2
@@ -3282,9 +3291,7 @@ func op0xcb65(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb66 executes BIT 4,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb66 executes BIT 4,(HL) (template x8/rsb/bit)
 func op0xcb66(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 4) % 2
@@ -3296,9 +3303,7 @@ func op0xcb66(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb67 executes BIT 4,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb67 executes BIT 4,A (template x8/rsb/bit)
 func op0xcb67(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 4) % 2
@@ -3310,9 +3315,7 @@ func op0xcb67(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb68 executes BIT 5,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb68 executes BIT 5,B (template x8/rsb/bit)
 func op0xcb68(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 5) % 2
@@ -3324,9 +3327,7 @@ func op0xcb68(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb69 executes BIT 5,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb69 executes BIT 5,C (template x8/rsb/bit)
 func op0xcb69(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 5) % 2
@@ -3338,9 +3339,7 @@ func op0xcb69(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb6a executes BIT 5,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6a executes BIT 5,D (template x8/rsb/bit)
 func op0xcb6a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 5) % 2
@@ -3352,9 +3351,7 @@ func op0xcb6a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb6b executes BIT 5,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6b executes BIT 5,E (template x8/rsb/bit)
 func op0xcb6b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 5) % 2
@@ -3366,9 +3363,7 @@ func op0xcb6b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb6c executes BIT 5,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6c executes BIT 5,H (template x8/rsb/bit)
 func op0xcb6c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 5) % 2
@@ -3380,9 +3375,7 @@ func op0xcb6c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb6d executes BIT 5,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6d executes BIT 5,L (template x8/rsb/bit)
 func op0xcb6d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 5) % 2
@@ -3394,9 +3387,7 @@ func op0xcb6d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb6e executes BIT 5,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6e executes BIT 5,(HL) (template x8/rsb/bit)
 func op0xcb6e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 5) % 2
@@ -3408,9 +3399,7 @@ func op0xcb6e(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb6f executes BIT 5,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb6f executes BIT 5,A (template x8/rsb/bit)
 func op0xcb6f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 5) % 2
@@ -3422,9 +3411,7 @@ func op0xcb6f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb70 executes BIT 6,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb70 executes BIT 6,B (template x8/rsb/bit)
 func op0xcb70(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 6) % 2
@@ -3436,9 +3423,7 @@ func op0xcb70(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb71 executes BIT 6,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb71 executes BIT 6,C (template x8/rsb/bit)
 func op0xcb71(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 6) % 2
@@ -3450,9 +3435,7 @@ func op0xcb71(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb72 executes BIT 6,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb72 executes BIT 6,D (template x8/rsb/bit)
 func op0xcb72(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 6) % 2
@@ -3464,9 +3447,7 @@ func op0xcb72(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb73 executes BIT 6,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb73 executes BIT 6,E (template x8/rsb/bit)
 func op0xcb73(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 6) % 2
@@ -3478,9 +3459,7 @@ func op0xcb73(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb74 executes BIT 6,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb74 executes BIT 6,H (template x8/rsb/bit)
 func op0xcb74(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 6) % 2
@@ -3492,9 +3471,7 @@ func op0xcb74(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb75 executes BIT 6,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb75 executes BIT 6,L (template x8/rsb/bit)
 func op0xcb75(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 6) % 2
@@ -3506,9 +3483,7 @@ func op0xcb75(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb76 executes BIT 6,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb76 executes BIT 6,(HL) (template x8/rsb/bit)
 func op0xcb76(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 6) % 2
@@ -3520,9 +3495,7 @@ func op0xcb76(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb77 executes BIT 6,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb77 executes BIT 6,A (template x8/rsb/bit)
 func op0xcb77(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 6) % 2
@@ -3534,9 +3507,7 @@ func op0xcb77(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb78 executes BIT 7,B
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb78 executes BIT 7,B (template x8/rsb/bit)
 func op0xcb78(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := (sourceValue >> 7) % 2
@@ -3548,9 +3519,7 @@ func op0xcb78(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb79 executes BIT 7,C
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb79 executes BIT 7,C (template x8/rsb/bit)
 func op0xcb79(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := (sourceValue >> 7) % 2
@@ -3562,9 +3531,7 @@ func op0xcb79(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb7a executes BIT 7,D
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7a executes BIT 7,D (template x8/rsb/bit)
 func op0xcb7a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := (sourceValue >> 7) % 2
@@ -3576,9 +3543,7 @@ func op0xcb7a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb7b executes BIT 7,E
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7b executes BIT 7,E (template x8/rsb/bit)
 func op0xcb7b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := (sourceValue >> 7) % 2
@@ -3590,9 +3555,7 @@ func op0xcb7b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb7c executes BIT 7,H
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7c executes BIT 7,H (template x8/rsb/bit)
 func op0xcb7c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := (sourceValue >> 7) % 2
@@ -3604,9 +3567,7 @@ func op0xcb7c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb7d executes BIT 7,L
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7d executes BIT 7,L (template x8/rsb/bit)
 func op0xcb7d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := (sourceValue >> 7) % 2
@@ -3618,9 +3579,7 @@ func op0xcb7d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb7e executes BIT 7,(HL)
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7e executes BIT 7,(HL) (template x8/rsb/bit)
 func op0xcb7e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := (sourceValue >> 7) % 2
@@ -3632,9 +3591,7 @@ func op0xcb7e(c *CPU) (int, int) {
 	return 2, 12
 }
 
-// op0xcb7f executes BIT 7,A
-// returns length and cycles
-// template x8/rsb/bit
+// op0xcb7f executes BIT 7,A (template x8/rsb/bit)
 func op0xcb7f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := (sourceValue >> 7) % 2
@@ -3646,9 +3603,7 @@ func op0xcb7f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb80 executes RES 0,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb80 executes RES 0,B (template x8/rsb/res)
 func op0xcb80(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3658,9 +3613,7 @@ func op0xcb80(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb81 executes RES 0,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb81 executes RES 0,C (template x8/rsb/res)
 func op0xcb81(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3670,9 +3623,7 @@ func op0xcb81(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb82 executes RES 0,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb82 executes RES 0,D (template x8/rsb/res)
 func op0xcb82(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3682,9 +3633,7 @@ func op0xcb82(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb83 executes RES 0,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb83 executes RES 0,E (template x8/rsb/res)
 func op0xcb83(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3694,9 +3643,7 @@ func op0xcb83(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb84 executes RES 0,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb84 executes RES 0,H (template x8/rsb/res)
 func op0xcb84(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3706,9 +3653,7 @@ func op0xcb84(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb85 executes RES 0,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb85 executes RES 0,L (template x8/rsb/res)
 func op0xcb85(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3718,9 +3663,7 @@ func op0xcb85(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb86 executes RES 0,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb86 executes RES 0,(HL) (template x8/rsb/res)
 func op0xcb86(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3730,9 +3673,7 @@ func op0xcb86(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcb87 executes RES 0,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb87 executes RES 0,A (template x8/rsb/res)
 func op0xcb87(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 0)
@@ -3742,9 +3683,7 @@ func op0xcb87(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb88 executes RES 1,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb88 executes RES 1,B (template x8/rsb/res)
 func op0xcb88(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3754,9 +3693,7 @@ func op0xcb88(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb89 executes RES 1,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb89 executes RES 1,C (template x8/rsb/res)
 func op0xcb89(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3766,9 +3703,7 @@ func op0xcb89(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb8a executes RES 1,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8a executes RES 1,D (template x8/rsb/res)
 func op0xcb8a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3778,9 +3713,7 @@ func op0xcb8a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb8b executes RES 1,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8b executes RES 1,E (template x8/rsb/res)
 func op0xcb8b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3790,9 +3723,7 @@ func op0xcb8b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb8c executes RES 1,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8c executes RES 1,H (template x8/rsb/res)
 func op0xcb8c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3802,9 +3733,7 @@ func op0xcb8c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb8d executes RES 1,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8d executes RES 1,L (template x8/rsb/res)
 func op0xcb8d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3814,9 +3743,7 @@ func op0xcb8d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb8e executes RES 1,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8e executes RES 1,(HL) (template x8/rsb/res)
 func op0xcb8e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3826,9 +3753,7 @@ func op0xcb8e(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcb8f executes RES 1,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb8f executes RES 1,A (template x8/rsb/res)
 func op0xcb8f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 1)
@@ -3838,9 +3763,7 @@ func op0xcb8f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb90 executes RES 2,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb90 executes RES 2,B (template x8/rsb/res)
 func op0xcb90(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3850,9 +3773,7 @@ func op0xcb90(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb91 executes RES 2,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb91 executes RES 2,C (template x8/rsb/res)
 func op0xcb91(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3862,9 +3783,7 @@ func op0xcb91(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb92 executes RES 2,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb92 executes RES 2,D (template x8/rsb/res)
 func op0xcb92(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3874,9 +3793,7 @@ func op0xcb92(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb93 executes RES 2,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb93 executes RES 2,E (template x8/rsb/res)
 func op0xcb93(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3886,9 +3803,7 @@ func op0xcb93(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb94 executes RES 2,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb94 executes RES 2,H (template x8/rsb/res)
 func op0xcb94(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3898,9 +3813,7 @@ func op0xcb94(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb95 executes RES 2,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb95 executes RES 2,L (template x8/rsb/res)
 func op0xcb95(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3910,9 +3823,7 @@ func op0xcb95(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb96 executes RES 2,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb96 executes RES 2,(HL) (template x8/rsb/res)
 func op0xcb96(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3922,9 +3833,7 @@ func op0xcb96(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcb97 executes RES 2,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb97 executes RES 2,A (template x8/rsb/res)
 func op0xcb97(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 2)
@@ -3934,9 +3843,7 @@ func op0xcb97(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb98 executes RES 3,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb98 executes RES 3,B (template x8/rsb/res)
 func op0xcb98(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -3946,9 +3853,7 @@ func op0xcb98(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb99 executes RES 3,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb99 executes RES 3,C (template x8/rsb/res)
 func op0xcb99(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -3958,9 +3863,7 @@ func op0xcb99(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb9a executes RES 3,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9a executes RES 3,D (template x8/rsb/res)
 func op0xcb9a(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -3970,9 +3873,7 @@ func op0xcb9a(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb9b executes RES 3,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9b executes RES 3,E (template x8/rsb/res)
 func op0xcb9b(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -3982,9 +3883,7 @@ func op0xcb9b(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb9c executes RES 3,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9c executes RES 3,H (template x8/rsb/res)
 func op0xcb9c(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -3994,9 +3893,7 @@ func op0xcb9c(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb9d executes RES 3,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9d executes RES 3,L (template x8/rsb/res)
 func op0xcb9d(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -4006,9 +3903,7 @@ func op0xcb9d(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcb9e executes RES 3,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9e executes RES 3,(HL) (template x8/rsb/res)
 func op0xcb9e(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 3)
@@ -4018,9 +3913,7 @@ func op0xcb9e(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcb9f executes RES 3,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcb9f executes RES 3,A (template x8/rsb/res)
 func op0xcb9f(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 3)
@@ -4030,9 +3923,7 @@ func op0xcb9f(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba0 executes RES 4,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba0 executes RES 4,B (template x8/rsb/res)
 func op0xcba0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4042,9 +3933,7 @@ func op0xcba0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba1 executes RES 4,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba1 executes RES 4,C (template x8/rsb/res)
 func op0xcba1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4054,9 +3943,7 @@ func op0xcba1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba2 executes RES 4,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba2 executes RES 4,D (template x8/rsb/res)
 func op0xcba2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4066,9 +3953,7 @@ func op0xcba2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba3 executes RES 4,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba3 executes RES 4,E (template x8/rsb/res)
 func op0xcba3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4078,9 +3963,7 @@ func op0xcba3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba4 executes RES 4,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba4 executes RES 4,H (template x8/rsb/res)
 func op0xcba4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4090,9 +3973,7 @@ func op0xcba4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba5 executes RES 4,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba5 executes RES 4,L (template x8/rsb/res)
 func op0xcba5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4102,9 +3983,7 @@ func op0xcba5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba6 executes RES 4,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba6 executes RES 4,(HL) (template x8/rsb/res)
 func op0xcba6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4114,9 +3993,7 @@ func op0xcba6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcba7 executes RES 4,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba7 executes RES 4,A (template x8/rsb/res)
 func op0xcba7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 4)
@@ -4126,9 +4003,7 @@ func op0xcba7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba8 executes RES 5,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba8 executes RES 5,B (template x8/rsb/res)
 func op0xcba8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4138,9 +4013,7 @@ func op0xcba8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcba9 executes RES 5,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcba9 executes RES 5,C (template x8/rsb/res)
 func op0xcba9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4150,9 +4023,7 @@ func op0xcba9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbaa executes RES 5,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbaa executes RES 5,D (template x8/rsb/res)
 func op0xcbaa(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4162,9 +4033,7 @@ func op0xcbaa(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbab executes RES 5,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbab executes RES 5,E (template x8/rsb/res)
 func op0xcbab(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4174,9 +4043,7 @@ func op0xcbab(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbac executes RES 5,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbac executes RES 5,H (template x8/rsb/res)
 func op0xcbac(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4186,9 +4053,7 @@ func op0xcbac(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbad executes RES 5,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbad executes RES 5,L (template x8/rsb/res)
 func op0xcbad(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4198,9 +4063,7 @@ func op0xcbad(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbae executes RES 5,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbae executes RES 5,(HL) (template x8/rsb/res)
 func op0xcbae(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4210,9 +4073,7 @@ func op0xcbae(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbaf executes RES 5,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbaf executes RES 5,A (template x8/rsb/res)
 func op0xcbaf(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 5)
@@ -4222,9 +4083,7 @@ func op0xcbaf(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb0 executes RES 6,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb0 executes RES 6,B (template x8/rsb/res)
 func op0xcbb0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4234,9 +4093,7 @@ func op0xcbb0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb1 executes RES 6,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb1 executes RES 6,C (template x8/rsb/res)
 func op0xcbb1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4246,9 +4103,7 @@ func op0xcbb1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb2 executes RES 6,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb2 executes RES 6,D (template x8/rsb/res)
 func op0xcbb2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4258,9 +4113,7 @@ func op0xcbb2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb3 executes RES 6,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb3 executes RES 6,E (template x8/rsb/res)
 func op0xcbb3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4270,9 +4123,7 @@ func op0xcbb3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb4 executes RES 6,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb4 executes RES 6,H (template x8/rsb/res)
 func op0xcbb4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4282,9 +4133,7 @@ func op0xcbb4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb5 executes RES 6,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb5 executes RES 6,L (template x8/rsb/res)
 func op0xcbb5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4294,9 +4143,7 @@ func op0xcbb5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb6 executes RES 6,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb6 executes RES 6,(HL) (template x8/rsb/res)
 func op0xcbb6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4306,9 +4153,7 @@ func op0xcbb6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbb7 executes RES 6,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb7 executes RES 6,A (template x8/rsb/res)
 func op0xcbb7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 6)
@@ -4318,9 +4163,7 @@ func op0xcbb7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb8 executes RES 7,B
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb8 executes RES 7,B (template x8/rsb/res)
 func op0xcbb8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4330,9 +4173,7 @@ func op0xcbb8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbb9 executes RES 7,C
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbb9 executes RES 7,C (template x8/rsb/res)
 func op0xcbb9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4342,9 +4183,7 @@ func op0xcbb9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbba executes RES 7,D
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbba executes RES 7,D (template x8/rsb/res)
 func op0xcbba(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4354,9 +4193,7 @@ func op0xcbba(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbbb executes RES 7,E
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbbb executes RES 7,E (template x8/rsb/res)
 func op0xcbbb(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4366,9 +4203,7 @@ func op0xcbbb(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbbc executes RES 7,H
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbbc executes RES 7,H (template x8/rsb/res)
 func op0xcbbc(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4378,9 +4213,7 @@ func op0xcbbc(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbbd executes RES 7,L
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbbd executes RES 7,L (template x8/rsb/res)
 func op0xcbbd(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4390,9 +4223,7 @@ func op0xcbbd(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbbe executes RES 7,(HL)
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbbe executes RES 7,(HL) (template x8/rsb/res)
 func op0xcbbe(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4402,9 +4233,7 @@ func op0xcbbe(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbbf executes RES 7,A
-// returns length and cycles
-// template x8/rsb/res
+// op0xcbbf executes RES 7,A (template x8/rsb/res)
 func op0xcbbf(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue & ^(uint8(1) << 7)
@@ -4414,9 +4243,7 @@ func op0xcbbf(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc0 executes SET 0,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc0 executes SET 0,B (template x8/rsb/set)
 func op0xcbc0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 0
@@ -4426,9 +4253,7 @@ func op0xcbc0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc1 executes SET 0,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc1 executes SET 0,C (template x8/rsb/set)
 func op0xcbc1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 0
@@ -4438,9 +4263,7 @@ func op0xcbc1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc2 executes SET 0,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc2 executes SET 0,D (template x8/rsb/set)
 func op0xcbc2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 0
@@ -4450,9 +4273,7 @@ func op0xcbc2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc3 executes SET 0,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc3 executes SET 0,E (template x8/rsb/set)
 func op0xcbc3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 0
@@ -4462,9 +4283,7 @@ func op0xcbc3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc4 executes SET 0,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc4 executes SET 0,H (template x8/rsb/set)
 func op0xcbc4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 0
@@ -4474,9 +4293,7 @@ func op0xcbc4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc5 executes SET 0,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc5 executes SET 0,L (template x8/rsb/set)
 func op0xcbc5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 0
@@ -4486,9 +4303,7 @@ func op0xcbc5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc6 executes SET 0,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc6 executes SET 0,(HL) (template x8/rsb/set)
 func op0xcbc6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 0
@@ -4498,9 +4313,7 @@ func op0xcbc6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbc7 executes SET 0,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc7 executes SET 0,A (template x8/rsb/set)
 func op0xcbc7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 0
@@ -4510,9 +4323,7 @@ func op0xcbc7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc8 executes SET 1,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc8 executes SET 1,B (template x8/rsb/set)
 func op0xcbc8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 1
@@ -4522,9 +4333,7 @@ func op0xcbc8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbc9 executes SET 1,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbc9 executes SET 1,C (template x8/rsb/set)
 func op0xcbc9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 1
@@ -4534,9 +4343,7 @@ func op0xcbc9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbca executes SET 1,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbca executes SET 1,D (template x8/rsb/set)
 func op0xcbca(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 1
@@ -4546,9 +4353,7 @@ func op0xcbca(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbcb executes SET 1,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbcb executes SET 1,E (template x8/rsb/set)
 func op0xcbcb(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 1
@@ -4558,9 +4363,7 @@ func op0xcbcb(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbcc executes SET 1,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbcc executes SET 1,H (template x8/rsb/set)
 func op0xcbcc(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 1
@@ -4570,9 +4373,7 @@ func op0xcbcc(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbcd executes SET 1,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbcd executes SET 1,L (template x8/rsb/set)
 func op0xcbcd(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 1
@@ -4582,9 +4383,7 @@ func op0xcbcd(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbce executes SET 1,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbce executes SET 1,(HL) (template x8/rsb/set)
 func op0xcbce(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 1
@@ -4594,9 +4393,7 @@ func op0xcbce(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbcf executes SET 1,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbcf executes SET 1,A (template x8/rsb/set)
 func op0xcbcf(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 1
@@ -4606,9 +4403,7 @@ func op0xcbcf(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd0 executes SET 2,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd0 executes SET 2,B (template x8/rsb/set)
 func op0xcbd0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 2
@@ -4618,9 +4413,7 @@ func op0xcbd0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd1 executes SET 2,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd1 executes SET 2,C (template x8/rsb/set)
 func op0xcbd1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 2
@@ -4630,9 +4423,7 @@ func op0xcbd1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd2 executes SET 2,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd2 executes SET 2,D (template x8/rsb/set)
 func op0xcbd2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 2
@@ -4642,9 +4433,7 @@ func op0xcbd2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd3 executes SET 2,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd3 executes SET 2,E (template x8/rsb/set)
 func op0xcbd3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 2
@@ -4654,9 +4443,7 @@ func op0xcbd3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd4 executes SET 2,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd4 executes SET 2,H (template x8/rsb/set)
 func op0xcbd4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 2
@@ -4666,9 +4453,7 @@ func op0xcbd4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd5 executes SET 2,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd5 executes SET 2,L (template x8/rsb/set)
 func op0xcbd5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 2
@@ -4678,9 +4463,7 @@ func op0xcbd5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd6 executes SET 2,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd6 executes SET 2,(HL) (template x8/rsb/set)
 func op0xcbd6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 2
@@ -4690,9 +4473,7 @@ func op0xcbd6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbd7 executes SET 2,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd7 executes SET 2,A (template x8/rsb/set)
 func op0xcbd7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 2
@@ -4702,9 +4483,7 @@ func op0xcbd7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd8 executes SET 3,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd8 executes SET 3,B (template x8/rsb/set)
 func op0xcbd8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 3
@@ -4714,9 +4493,7 @@ func op0xcbd8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbd9 executes SET 3,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbd9 executes SET 3,C (template x8/rsb/set)
 func op0xcbd9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 3
@@ -4726,9 +4503,7 @@ func op0xcbd9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbda executes SET 3,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbda executes SET 3,D (template x8/rsb/set)
 func op0xcbda(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 3
@@ -4738,9 +4513,7 @@ func op0xcbda(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbdb executes SET 3,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbdb executes SET 3,E (template x8/rsb/set)
 func op0xcbdb(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 3
@@ -4750,9 +4523,7 @@ func op0xcbdb(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbdc executes SET 3,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbdc executes SET 3,H (template x8/rsb/set)
 func op0xcbdc(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 3
@@ -4762,9 +4533,7 @@ func op0xcbdc(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbdd executes SET 3,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbdd executes SET 3,L (template x8/rsb/set)
 func op0xcbdd(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 3
@@ -4774,9 +4543,7 @@ func op0xcbdd(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbde executes SET 3,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbde executes SET 3,(HL) (template x8/rsb/set)
 func op0xcbde(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 3
@@ -4786,9 +4553,7 @@ func op0xcbde(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbdf executes SET 3,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbdf executes SET 3,A (template x8/rsb/set)
 func op0xcbdf(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 3
@@ -4798,9 +4563,7 @@ func op0xcbdf(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe0 executes SET 4,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe0 executes SET 4,B (template x8/rsb/set)
 func op0xcbe0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 4
@@ -4810,9 +4573,7 @@ func op0xcbe0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe1 executes SET 4,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe1 executes SET 4,C (template x8/rsb/set)
 func op0xcbe1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 4
@@ -4822,9 +4583,7 @@ func op0xcbe1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe2 executes SET 4,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe2 executes SET 4,D (template x8/rsb/set)
 func op0xcbe2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 4
@@ -4834,9 +4593,7 @@ func op0xcbe2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe3 executes SET 4,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe3 executes SET 4,E (template x8/rsb/set)
 func op0xcbe3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 4
@@ -4846,9 +4603,7 @@ func op0xcbe3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe4 executes SET 4,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe4 executes SET 4,H (template x8/rsb/set)
 func op0xcbe4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 4
@@ -4858,9 +4613,7 @@ func op0xcbe4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe5 executes SET 4,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe5 executes SET 4,L (template x8/rsb/set)
 func op0xcbe5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 4
@@ -4870,9 +4623,7 @@ func op0xcbe5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe6 executes SET 4,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe6 executes SET 4,(HL) (template x8/rsb/set)
 func op0xcbe6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 4
@@ -4882,9 +4633,7 @@ func op0xcbe6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbe7 executes SET 4,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe7 executes SET 4,A (template x8/rsb/set)
 func op0xcbe7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 4
@@ -4894,9 +4643,7 @@ func op0xcbe7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe8 executes SET 5,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe8 executes SET 5,B (template x8/rsb/set)
 func op0xcbe8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 5
@@ -4906,9 +4653,7 @@ func op0xcbe8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbe9 executes SET 5,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbe9 executes SET 5,C (template x8/rsb/set)
 func op0xcbe9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 5
@@ -4918,9 +4663,7 @@ func op0xcbe9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbea executes SET 5,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbea executes SET 5,D (template x8/rsb/set)
 func op0xcbea(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 5
@@ -4930,9 +4673,7 @@ func op0xcbea(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbeb executes SET 5,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbeb executes SET 5,E (template x8/rsb/set)
 func op0xcbeb(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 5
@@ -4942,9 +4683,7 @@ func op0xcbeb(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbec executes SET 5,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbec executes SET 5,H (template x8/rsb/set)
 func op0xcbec(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 5
@@ -4954,9 +4693,7 @@ func op0xcbec(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbed executes SET 5,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbed executes SET 5,L (template x8/rsb/set)
 func op0xcbed(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 5
@@ -4966,9 +4703,7 @@ func op0xcbed(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbee executes SET 5,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbee executes SET 5,(HL) (template x8/rsb/set)
 func op0xcbee(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 5
@@ -4978,9 +4713,7 @@ func op0xcbee(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbef executes SET 5,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbef executes SET 5,A (template x8/rsb/set)
 func op0xcbef(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 5
@@ -4990,9 +4723,7 @@ func op0xcbef(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf0 executes SET 6,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf0 executes SET 6,B (template x8/rsb/set)
 func op0xcbf0(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 6
@@ -5002,9 +4733,7 @@ func op0xcbf0(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf1 executes SET 6,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf1 executes SET 6,C (template x8/rsb/set)
 func op0xcbf1(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 6
@@ -5014,9 +4743,7 @@ func op0xcbf1(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf2 executes SET 6,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf2 executes SET 6,D (template x8/rsb/set)
 func op0xcbf2(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 6
@@ -5026,9 +4753,7 @@ func op0xcbf2(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf3 executes SET 6,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf3 executes SET 6,E (template x8/rsb/set)
 func op0xcbf3(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 6
@@ -5038,9 +4763,7 @@ func op0xcbf3(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf4 executes SET 6,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf4 executes SET 6,H (template x8/rsb/set)
 func op0xcbf4(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 6
@@ -5050,9 +4773,7 @@ func op0xcbf4(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf5 executes SET 6,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf5 executes SET 6,L (template x8/rsb/set)
 func op0xcbf5(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 6
@@ -5062,9 +4783,7 @@ func op0xcbf5(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf6 executes SET 6,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf6 executes SET 6,(HL) (template x8/rsb/set)
 func op0xcbf6(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 6
@@ -5074,9 +4793,7 @@ func op0xcbf6(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbf7 executes SET 6,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf7 executes SET 6,A (template x8/rsb/set)
 func op0xcbf7(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 6
@@ -5086,9 +4803,7 @@ func op0xcbf7(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf8 executes SET 7,B
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf8 executes SET 7,B (template x8/rsb/set)
 func op0xcbf8(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.B)
 	value := sourceValue | uint8(1) << 7
@@ -5098,9 +4813,7 @@ func op0xcbf8(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbf9 executes SET 7,C
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbf9 executes SET 7,C (template x8/rsb/set)
 func op0xcbf9(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.C)
 	value := sourceValue | uint8(1) << 7
@@ -5110,9 +4823,7 @@ func op0xcbf9(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbfa executes SET 7,D
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbfa executes SET 7,D (template x8/rsb/set)
 func op0xcbfa(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.D)
 	value := sourceValue | uint8(1) << 7
@@ -5122,9 +4833,7 @@ func op0xcbfa(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbfb executes SET 7,E
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbfb executes SET 7,E (template x8/rsb/set)
 func op0xcbfb(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.E)
 	value := sourceValue | uint8(1) << 7
@@ -5134,9 +4843,7 @@ func op0xcbfb(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbfc executes SET 7,H
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbfc executes SET 7,H (template x8/rsb/set)
 func op0xcbfc(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.H)
 	value := sourceValue | uint8(1) << 7
@@ -5146,9 +4853,7 @@ func op0xcbfc(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbfd executes SET 7,L
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbfd executes SET 7,L (template x8/rsb/set)
 func op0xcbfd(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.L)
 	value := sourceValue | uint8(1) << 7
@@ -5158,9 +4863,7 @@ func op0xcbfd(c *CPU) (int, int) {
 	return 2, 8
 }
 
-// op0xcbfe executes SET 7,(HL)
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbfe executes SET 7,(HL) (template x8/rsb/set)
 func op0xcbfe(c *CPU) (int, int) {
 	sourceValue := c.GetMemory8Bit(c.GetRegister16Bit(register.HL))
 	value := sourceValue | uint8(1) << 7
@@ -5170,9 +4873,7 @@ func op0xcbfe(c *CPU) (int, int) {
 	return 2, 16
 }
 
-// op0xcbff executes SET 7,A
-// returns length and cycles
-// template x8/rsb/set
+// op0xcbff executes SET 7,A (template x8/rsb/set)
 func op0xcbff(c *CPU) (int, int) {
 	sourceValue := c.GetRegister8Bit(register.A)
 	value := sourceValue | uint8(1) << 7

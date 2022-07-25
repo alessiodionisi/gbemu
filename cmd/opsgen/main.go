@@ -18,7 +18,7 @@ func main() {
 		log.Fatal().Err(err).Send()
 	}
 
-	if err := opg.Generate("assets/dmgops.json"); err != nil {
+	if err := opg.Generate(); err != nil {
 		log.Fatal().Err(err).Send()
 	}
 }

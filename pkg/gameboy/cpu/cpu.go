@@ -39,6 +39,8 @@ type CPU struct {
 	// Stack pointer, a 16-bit register that holds the starting address of the stack area of memory.
 	// The contents of the stack pointer are decremented when a subroutine CALL instruction or PUSH instruction is executed or when an interrupt occurs and incremented when a return instruction or pop instruction is executed.
 	sp uint16
+
+	prefix bool
 }
 
 // func (c *CPU) getA() uint8 {
@@ -280,6 +282,18 @@ func (c *CPU) GetMemory8Bit(address uint16) uint8 {
 
 func (c *CPU) SetMemory8Bit(address uint16, value uint8) {
 
+}
+
+func (c *CPU) ExecuteOp(op uint16) {
+	opFunc, ok := opUnprefixedMap[op]
+	if !ok {
+		panic("!ok")
+	}
+
+	length, cycles := opFunc(c)
+
+	c.pc += uint16(length)
+	_ = cycles
 }
 
 func New() *CPU {

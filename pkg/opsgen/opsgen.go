@@ -2,6 +2,7 @@ package opsgen
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"html"
@@ -10,6 +11,9 @@ import (
 	"os"
 	"strings"
 )
+
+//go:embed dmgops.json
+var opsgenFileBytes []byte
 
 type templateData struct {
 	Name           string
@@ -88,7 +92,7 @@ func (o *OpsGen) executeOp(wr io.Writer, i int, op opsgenFileOp) (bool, error) {
 		}
 
 		return true, nil
-	case "nop", "stop", "halt", "prefix cb", "cpl", "ccf":
+	case "nop", "stop", "halt", "ei", "prefix", "cpl", "ccf", "unused":
 		if err := o.template.ExecuteTemplate(
 			wr,
 			opGroupAndName,
@@ -98,8 +102,6 @@ func (o *OpsGen) executeOp(wr io.Writer, i int, op opsgenFileOp) (bool, error) {
 		}
 
 		return true, nil
-	case "unused":
-		return true, nil
 	}
 
 	fmt.Printf("missing %s\n", opGroupAndName)
@@ -107,12 +109,7 @@ func (o *OpsGen) executeOp(wr io.Writer, i int, op opsgenFileOp) (bool, error) {
 	return false, nil
 }
 
-func (o *OpsGen) Generate(path string) error {
-	opsgenFileBytes, err := readAll(path)
-	if err != nil {
-		return err
-	}
-
+func (o *OpsGen) Generate() error {
 	var opsgenFile opsgenFile
 
 	if err := json.Unmarshal(opsgenFileBytes, &opsgenFile); err != nil {
@@ -120,6 +117,8 @@ func (o *OpsGen) Generate(path string) error {
 	}
 
 	generatedOps := 0
+	unprefixedOpsMap := ""
+	prefixedOpsMap := ""
 
 	var unprefixedOps, cbPrefixedOps bytes.Buffer
 
@@ -130,17 +129,21 @@ func (o *OpsGen) Generate(path string) error {
 		}
 
 		if generated {
+			unprefixedOpsMap = unprefixedOpsMap + fmt.Sprintf("	%#04x: op%#04x,\n", i, i)
 			generatedOps++
 		}
 	}
 
 	for i, op := range opsgenFile.CBPrefixed {
-		generated, err := o.executeOp(&cbPrefixedOps, i+51968, op)
+		cbPrefixed := i + 51968
+
+		generated, err := o.executeOp(&cbPrefixedOps, cbPrefixed, op)
 		if err != nil {
 			return err
 		}
 
 		if generated {
+			prefixedOpsMap = prefixedOpsMap + fmt.Sprintf("	%#04x: op%#04x,\n", cbPrefixed, cbPrefixed)
 			generatedOps++
 		}
 	}
@@ -166,6 +169,22 @@ import (
 		return err
 	}
 
+	_, err = opsFile.WriteString(fmt.Sprintf(`var opUnprefixedMap map[uint16]func (c *CPU) (int, int) = map[uint16]func(c *CPU) (int, int){
+%s}
+
+`, unprefixedOpsMap))
+	if err != nil {
+		return err
+	}
+
+	_, err = opsFile.WriteString(fmt.Sprintf(`var opPrefixedMap map[uint16]func (c *CPU) (int, int) = map[uint16]func(c *CPU) (int, int){
+%s}
+
+`, prefixedOpsMap))
+	if err != nil {
+		return err
+	}
+
 	_, err = opsFile.WriteString(html.UnescapeString(unprefixedOps.String()))
 	if err != nil {
 		return err
@@ -180,9 +199,7 @@ import (
 }
 
 func New() (*OpsGen, error) {
-	comments := `// op{{.Code}} executes {{.Name}}
-// returns length and cycles
-// template {{.Template}}`
+	comments := `// op{{.Code}} executes {{.Name}} (template {{.Template}})`
 
 	controlMiscNopTemplate := comments + `
 func op{{.Code}}(c *CPU) (int, int) {
@@ -193,25 +210,27 @@ func op{{.Code}}(c *CPU) (int, int) {
 
 	controlMiscStopTemplate := comments + `
 func op{{.Code}}(c *CPU) (int, int) {
-	// TODO: wtf
+	// TODO
+	// c.ime = 0
 
 	return {{.Length}}, {{.CyclesNoBranch}}
 }
 
 `
 
-	controlMiscHaltTemplate := comments + `
+	controlMiscEiTemplate := comments + `
 func op{{.Code}}(c *CPU) (int, int) {
-	// TODO: wtf
+	// TODO
+	// c.imeScheduled = 0
 
 	return {{.Length}}, {{.CyclesNoBranch}}
 }
 
 `
 
-	controlMiscPrefixCbTemplate := comments + `
+	controlMiscPrefixTemplate := comments + `
 func op{{.Code}}(c *CPU) (int, int) {
-	// TODO: set bool to run prefixed operations
+	c.prefix = true
 
 	return {{.Length}}, {{.CyclesNoBranch}}
 }
@@ -566,6 +585,13 @@ func op{{.Code}}(c *CPU) (int, int) {
 
 `
 
+	unusedTemplate := comments + `
+func op{{.Code}}(c *CPU) (int, int) {
+	return {{.Length}}, {{.CyclesNoBranch}}
+}
+
+`
+
 	tmpl := template.New("")
 
 	tmpl = tmpl.Funcs(template.FuncMap{
@@ -712,12 +738,22 @@ func op{{.Code}}(c *CPU) (int, int) {
 		return nil, err
 	}
 
-	tmpl, err = tmpl.New("control/misc/halt").Parse(controlMiscHaltTemplate)
+	tmpl, err = tmpl.New("control/misc/halt").Parse(controlMiscStopTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	tmpl, err = tmpl.New("control/misc/prefix cb").Parse(controlMiscPrefixCbTemplate)
+	tmpl, err = tmpl.New("control/misc/ei").Parse(controlMiscEiTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err = tmpl.New("control/misc/di").Parse(controlMiscStopTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err = tmpl.New("control/misc/prefix").Parse(controlMiscPrefixTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -788,6 +824,11 @@ func op{{.Code}}(c *CPU) (int, int) {
 	}
 
 	tmpl, err = tmpl.New("x8/rsb/set").Parse(x8RsbSetTemplate)
+	if err != nil {
+		return nil, err
+	}
+
+	tmpl, err = tmpl.New("unused/unused").Parse(unusedTemplate)
 	if err != nil {
 		return nil, err
 	}
